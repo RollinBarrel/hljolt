@@ -1,0 +1,27 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Launch",
+            "program": "${workspaceFolder}/jolt-test",
+            "args": [],
+            "env": {
+                "LD_LIBRARY_PATH": ".",
+            },
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Launch lightgun",
+            "program": "hl",
+            "args": ["/home/max/d/lightgun/game.hl"],
+            "cwd": "/home/max/d/lightgun"
+        }
+    ]
+}

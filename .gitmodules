@@ -1,0 +1,4 @@
+[submodule "libs/JoltPhysics"]
+	path = libs/JoltPhysics
+	url = https://github.com/jrouwe/JoltPhysics.git
+	branch = v5.3.0

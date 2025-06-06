@@ -279,8 +279,8 @@ HL_PRIM void HL_NAME(instance_set_object_vs_broadphase_layer_filter)(_JoltInstan
         hl_remove_root(&shouldCollide);
     }
 	shouldCollide = callback;
-    if (callback) {
-        hl_add_root(callback);
+    if (shouldCollide) {
+        hl_add_root(&shouldCollide);
     }
 }
 DEFINE_PRIM(_VOID, instance_set_object_vs_broadphase_layer_filter, JOLTINST _FUN(_BOOL, _I32 _I32));
@@ -291,8 +291,8 @@ HL_PRIM void HL_NAME(instance_set_object_vs_object_layer_filter)(_JoltInstance* 
         hl_remove_root(&shouldCollide);
     }
 	shouldCollide = callback;
-    if (callback) {
-        hl_add_root(callback);
+    if (shouldCollide) {
+        hl_add_root(&shouldCollide);
     }
 }
 DEFINE_PRIM(_VOID, instance_set_object_vs_object_layer_filter, JOLTINST _FUN(_BOOL, _I32 _I32));
@@ -303,8 +303,8 @@ HL_PRIM void HL_NAME(instance_set_on_contact_validate)(_JoltInstance* jolt, _vcl
         hl_remove_root(&onContactValidate);
     }
 	onContactValidate = callback;
-    if (callback) {
-        hl_add_root(callback);
+    if (onContactValidate) {
+        hl_add_root(&onContactValidate);
     }
 }
 DEFINE_PRIM(_VOID, instance_set_on_contact_validate, JOLTINST _FUN(_I32, _I32 _I32 _STRUCT COLSHAPERES));
@@ -315,8 +315,8 @@ HL_PRIM void HL_NAME(instance_set_on_contact_added)(_JoltInstance* jolt, _vclosu
         hl_remove_root(&onContactAdded);
     }
 	onContactAdded = callback;
-    if (callback) {
-        hl_add_root(callback);
+    if (onContactAdded) {
+        hl_add_root(&onContactAdded);
     }
 }
 DEFINE_PRIM(_VOID, instance_set_on_contact_added, JOLTINST _FUN(_VOID, _I32 _I32 CONTACTMANIFOLD CONTACTSETTINGS));
@@ -327,8 +327,8 @@ HL_PRIM void HL_NAME(instance_set_on_contact_persisted)(_JoltInstance* jolt, _vc
         hl_remove_root(&onContactPersisted);
     }
 	onContactPersisted = callback;
-    if (callback) {
-        hl_add_root(callback);
+    if (onContactPersisted) {
+        hl_add_root(&onContactPersisted);
     }
 }
 DEFINE_PRIM(_VOID, instance_set_on_contact_persisted, JOLTINST _FUN(_VOID, _I32 _I32 CONTACTMANIFOLD CONTACTSETTINGS));
@@ -339,8 +339,8 @@ HL_PRIM void HL_NAME(instance_set_on_contact_removed)(_JoltInstance* jolt, _vclo
         hl_remove_root(&onContactRemoved);
     }
 	onContactRemoved = callback;
-    if (callback) {
-        hl_add_root(callback);
+    if (onContactRemoved) {
+        hl_add_root(&onContactRemoved);
     }
 }
 DEFINE_PRIM(_VOID, instance_set_on_contact_removed, JOLTINST _FUN(_VOID, _I32 _I32 _I32 _I32));

@@ -24,7 +24,6 @@ using namespace literals;
 #define BODY _ABSTRACT(Body)
 #define SHAPE _ABSTRACT(_ShapeRef)
 #define SHAPESETTINGS _ABSTRACT(ShapeSettings)
-#define BODYCREATIONSETTINGS _ABSTRACT(BodyCreationSettings)
 #define PHYSMAT _ABSTRACT(PhysicsMaterial)
 #define COLSHAPERES _ABSTRACT(CollideShapeResult)
 #define CONTACTMANIFOLD _ABSTRACT(ContactManifold)
@@ -391,8 +390,7 @@ HL_PRIM _ShapeRef* HL_NAME(sphere_shape_create)(double inRadius, PhysicsMaterial
 DEFINE_PRIM(SHAPE, sphere_shape_create, _F64 PHYSMAT);
 
 HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* inShape, DVec3* inPosition, DVec3* inRotation, EMotionType inMotionType, int inObjectLayer) {
-	BodyCreationSettings* settings = (BodyCreationSettings*)hl_gc_alloc_noptr(sizeof(BodyCreationSettings));
-	new (settings) BodyCreationSettings(
+	BodyCreationSettings* settings = new BodyCreationSettings(
 		inShape->ref,
 		RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
 		QuatArg(inRotation->mF64[0],inRotation->mF64[1], inRotation->mF64[2], inRotation->mF64[3]),
@@ -401,12 +399,14 @@ HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* 
 	);
 	return settings;
 }
-DEFINE_PRIM(BODYCREATIONSETTINGS, body_creation_settings_create, SHAPE _STRUCT _STRUCT _I32 _I32);
+DEFINE_PRIM(_STRUCT, body_creation_settings_create, SHAPE _STRUCT _STRUCT _I32 _I32);
 
 HL_PRIM int HL_NAME(body_interface_create_body)(BodyInterface* body_interface, BodyCreationSettings* settings) {
-	return body_interface->CreateBody(*settings)->GetID().GetIndexAndSequenceNumber();
+	int id = body_interface->CreateBody(*settings)->GetID().GetIndexAndSequenceNumber();
+	delete settings;
+	return id;
 }
-DEFINE_PRIM(_I32, body_interface_create_body, BODYIF BODYCREATIONSETTINGS);
+DEFINE_PRIM(_I32, body_interface_create_body, BODYIF _STRUCT);
 
 HL_PRIM void HL_NAME(body_interface_add_body)(BodyInterface* body_interface, uint32 bodyID, bool activate) {
 	body_interface->AddBody(BodyID(bodyID), (EActivation)!activate);

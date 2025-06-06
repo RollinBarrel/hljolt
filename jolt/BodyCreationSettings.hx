@@ -1,3 +1,3 @@
 package jolt;
 
-typedef BodyCreationSettings = hl.Abstract<"BodyCreationSettings">;
+@:struct class BodyCreationSettings {}

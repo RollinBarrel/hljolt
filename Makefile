@@ -14,7 +14,7 @@ endif
 
 JOLT_LIB = libs/JoltPhysics/Build/Linux_Debug/libJolt.a
 
-jolt.hdll: ${JOLT_LIB} jolt.o JobSystemImpl.o
+jolt.hdll: ${JOLT_LIB} jolt.o
 	${CXX} ${CPPFLAGS} ${CFLAGS} -shared -o jolt.hdll jolt.o ${JOLT_LIB} -lhl
 
 jolt-test: ${JOLT_LIB} jolt.o

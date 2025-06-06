@@ -3,6 +3,7 @@ MARCH ?= $(LBITS)
 PREFIX ?= /usr/local
 INSTALL_LIB_DIR ?= $(PREFIX)/lib
 CFLAGS = -Wall -Wstrict-aliasing=0 -O0 -g -I ../hashlink/src -D LIBHL_EXPORTS -I ./libs/JoltPhysics
+CFLAGS += -D JPH_DOUBLE_PRECISION -D JPH_CROSS_PLATFORM_DETERMINISTIC
 CPPFLAGS = -std=c++17
 # Linux
 CFLAGS += -m$(MARCH) -fPIC -pthread -fno-omit-frame-pointer

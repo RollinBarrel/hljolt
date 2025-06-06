@@ -9,6 +9,9 @@ abstract JoltInstance(hl.Abstract<"JoltInstance">) {
     public function setObjectVsObjectLayerFilter(callback:(layer1:Int, layer2:Int)->Bool):Void {}
     public function setOnContactValidate(callback:(body1:Int, body2:Int, baseOffset:Vector4, collisionResult:CollideShapeResult)->Int):Void {}
     public function setOnContactAdded(callback:(body1:Int, body2:Int, manifold:ContactManifold, settings:ContactSettings)->Void):Void {}
+    
+    public function setGravity(v:Vector4):Void {}
+    public function getGravity():Vector4 return null;
 
     public function getBodyInterface(callback:BodyInterface->Void):Void {}
     public function update(dt:Float, collisionSteps:Int):Int return -1;

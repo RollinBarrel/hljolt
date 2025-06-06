@@ -344,6 +344,20 @@ HL_PRIM void HL_NAME(instance_set_on_contact_removed)(_JoltInstance* jolt, _vclo
 }
 DEFINE_PRIM(_VOID, instance_set_on_contact_removed, JOLTINST _FUN(_VOID, _I32 _I32 _I32 _I32));
 
+HL_PRIM void HL_NAME(instance_set_gravity)(_JoltInstance* jolt, DVec3* inGravity) {
+	jolt->jolt->physics_system.SetGravity(Vec3Arg(inGravity->mF64[0], inGravity->mF64[1], inGravity->mF64[2]));
+}
+DEFINE_PRIM(_VOID, instance_set_gravity, JOLTINST _STRUCT);
+
+HL_PRIM DVec3* HL_NAME(instance_get_gravity)(_JoltInstance* jolt) {
+	Vec3 r = jolt->jolt->physics_system.GetGravity();
+
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(r.GetX(), r.GetY(), r.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, instance_get_gravity, JOLTINST);
+
 HL_PRIM void HL_NAME(instance_get_body_interface)(_JoltInstance* jolt, vclosure* callback) {
 	BodyInterface& body_interface = jolt->jolt->physics_system.GetBodyInterface();
 

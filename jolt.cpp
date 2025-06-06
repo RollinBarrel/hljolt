@@ -394,8 +394,8 @@ HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* 
 	BodyCreationSettings* settings = (BodyCreationSettings*)hl_gc_alloc_noptr(sizeof(BodyCreationSettings));
 	new (settings) BodyCreationSettings(
 		inShape->ref,
-		RVec3((Real)inPosition->mF64[0], (Real)inPosition->mF64[1], (Real)inPosition->mF64[2]),
-		Quat((float)inRotation->mF64[0],(float)inRotation->mF64[1], (float)inRotation->mF64[2], (float)inRotation->mF64[3]),
+		RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
+		QuatArg(inRotation->mF64[0],inRotation->mF64[1], inRotation->mF64[2], inRotation->mF64[3]),
 		inMotionType,
 		inObjectLayer
 	);
@@ -515,7 +515,7 @@ DEFINE_PRIM(_STRUCT, body_interface_get_angular_velocity, BODYIF _I32);
 HL_PRIM DVec3* HL_NAME(body_interface_get_point_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inPoint) {
 	Vec3 r = body_interface->GetPointVelocity(
 		BodyID(bodyID),
-		RVec3((Real)inPoint->mF64[0], (Real)inPoint->mF64[1], (Real)inPoint->mF64[2])
+		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2])
 	);
 
 	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
@@ -527,7 +527,7 @@ DEFINE_PRIM(_STRUCT, body_interface_get_point_velocity, BODYIF _I32 _STRUCT);
 HL_PRIM void HL_NAME(body_interface_add_force)(BodyInterface* body_interface, uint32 bodyID, DVec3* inForce, bool activate) {
 	body_interface->AddForce(
 		BodyID(bodyID),
-		RVec3((Real)inForce->mF64[0], (Real)inForce->mF64[1], (Real)inForce->mF64[2]),
+		Vec3Arg(inForce->mF64[0], inForce->mF64[1], inForce->mF64[2]),
 		(EActivation)!activate
 	);
 }
@@ -536,8 +536,8 @@ DEFINE_PRIM(_VOID, body_interface_add_force, BODYIF _I32 _STRUCT _BOOL);
 HL_PRIM void HL_NAME(body_interface_add_force_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inForce, DVec3* inPoint, bool activate) {
 	body_interface->AddForce(
 		BodyID(bodyID),
-		RVec3((Real)inForce->mF64[0], (Real)inForce->mF64[1], (Real)inForce->mF64[2]),
-		RVec3((Real)inPoint->mF64[0], (Real)inPoint->mF64[1], (Real)inPoint->mF64[2]),
+		Vec3Arg(inForce->mF64[0], inForce->mF64[1], inForce->mF64[2]),
+		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2]),
 		(EActivation)!activate
 	);
 }
@@ -546,7 +546,7 @@ DEFINE_PRIM(_VOID, body_interface_add_force_at_position, BODYIF _I32 _STRUCT _ST
 HL_PRIM void HL_NAME(body_interface_add_torque)(BodyInterface* body_interface, uint32 bodyID, DVec3* inTorque, bool activate) {
 	body_interface->AddTorque(
 		BodyID(bodyID),
-		RVec3((Real)inTorque->mF64[0], (Real)inTorque->mF64[1], (Real)inTorque->mF64[2]),
+		Vec3Arg(inTorque->mF64[0], inTorque->mF64[1], inTorque->mF64[2]),
 		(EActivation)!activate
 	);
 }
@@ -555,7 +555,7 @@ DEFINE_PRIM(_VOID, body_interface_add_torque, BODYIF _I32 _STRUCT _BOOL);
 HL_PRIM void HL_NAME(body_interface_add_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec3* inImpulse) {
 	body_interface->AddImpulse(
 		BodyID(bodyID),
-		RVec3((Real)inImpulse->mF64[0], (Real)inImpulse->mF64[1], (Real)inImpulse->mF64[2])
+		Vec3Arg(inImpulse->mF64[0], inImpulse->mF64[1], inImpulse->mF64[2])
 	);
 }
 DEFINE_PRIM(_VOID, body_interface_add_impulse, BODYIF _I32 _STRUCT);
@@ -563,8 +563,8 @@ DEFINE_PRIM(_VOID, body_interface_add_impulse, BODYIF _I32 _STRUCT);
 HL_PRIM void HL_NAME(body_interface_add_impulse_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inImpulse, DVec3* inPoint) {
 	body_interface->AddImpulse(
 		BodyID(bodyID),
-		RVec3((Real)inImpulse->mF64[0], (Real)inImpulse->mF64[1], (Real)inImpulse->mF64[2]),
-		RVec3((Real)inPoint->mF64[0], (Real)inPoint->mF64[1], (Real)inPoint->mF64[2])
+		Vec3Arg(inImpulse->mF64[0], inImpulse->mF64[1], inImpulse->mF64[2]),
+		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2])
 	);
 }
 DEFINE_PRIM(_VOID, body_interface_add_impulse_at_position, BODYIF _I32 _STRUCT _STRUCT);
@@ -572,7 +572,7 @@ DEFINE_PRIM(_VOID, body_interface_add_impulse_at_position, BODYIF _I32 _STRUCT _
 HL_PRIM void HL_NAME(body_interface_add_angular_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec3* inAngularImpulse) {
 	body_interface->AddAngularImpulse(
 		BodyID(bodyID),
-		RVec3((Real)inAngularImpulse->mF64[0], (Real)inAngularImpulse->mF64[1], (Real)inAngularImpulse->mF64[2])
+		Vec3Arg(inAngularImpulse->mF64[0], inAngularImpulse->mF64[1], inAngularImpulse->mF64[2])
 	);
 }
 DEFINE_PRIM(_VOID, body_interface_add_angular_impulse, BODYIF _I32 _STRUCT);

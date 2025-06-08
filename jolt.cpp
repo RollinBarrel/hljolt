@@ -365,6 +365,15 @@ HL_PRIM DVec3* HL_NAME(instance_get_gravity)(_JoltInstance* jolt) {
 }
 DEFINE_PRIM(_STRUCT, instance_get_gravity, JOLTINST);
 
+HL_PRIM DVec3* HL_NAME(contact_manifold_get_world_space_normal)(ContactManifold* manifold) {
+	Vec3 r = manifold->mWorldSpaceNormal;
+
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(r.GetX(), r.GetY(), r.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, contact_manifold_get_world_space_normal, CONTACTMANIFOLD);
+
 HL_PRIM void HL_NAME(instance_get_body_interface)(_JoltInstance* jolt, vclosure* callback) {
 	BodyInterface& body_interface = jolt->jolt->physics_system.GetBodyInterface();
 

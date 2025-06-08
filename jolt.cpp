@@ -11,6 +11,7 @@
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
+#include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 
@@ -25,6 +26,7 @@ using namespace literals;
 #define BODY _ABSTRACT(Body)
 #define SHAPE _ABSTRACT(_ShapeRef)
 #define SHAPESETTINGS _ABSTRACT(ShapeSettings)
+#define STATICCOMPOUNDSHAPESETTINGS _ABSTRACT(StaticCompoundShapeSettings)
 #define PHYSMAT _ABSTRACT(PhysicsMaterial)
 #define COLSHAPERES _ABSTRACT(CollideShapeResult)
 #define CONTACTMANIFOLD _ABSTRACT(ContactManifold)
@@ -428,6 +430,32 @@ HL_PRIM _ShapeRef* HL_NAME(convex_hull_shape_create)(varray* inPoints, double in
     return ref;
 }
 DEFINE_PRIM(SHAPE, convex_hull_shape_create, _ARR _F64 PHYSMAT);
+
+HL_PRIM StaticCompoundShapeSettings* HL_NAME(static_compound_shape_settings_alloc)() {
+	return new StaticCompoundShapeSettings();
+}
+DEFINE_PRIM(STATICCOMPOUNDSHAPESETTINGS, static_compound_shape_settings_alloc, _NO_ARG);
+
+HL_PRIM void HL_NAME(static_compound_shape_settings_add_shape)(StaticCompoundShapeSettings* settings, DVec3* inPosition, DVec3* inRotation, _ShapeRef* inShape, int inUserData) {
+	settings->AddShape(
+		Vec3Arg(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
+		QuatArg(inRotation->mF64[0],inRotation->mF64[1], inRotation->mF64[2], inRotation->mF64[3]),
+		inShape->ref,
+		inUserData
+	);
+}
+DEFINE_PRIM(_VOID, static_compound_shape_settings_add_shape, STATICCOMPOUNDSHAPESETTINGS _STRUCT _STRUCT SHAPE _I32);
+
+HL_PRIM _ShapeRef* HL_NAME(static_compound_shape_settings_create)(StaticCompoundShapeSettings* settings) {
+	Shape* r = settings->Create().Get().GetPtr();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, static_compound_shape_settings_create, STATICCOMPOUNDSHAPESETTINGS);
 
 HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* inShape, DVec3* inPosition, DVec3* inRotation, EMotionType inMotionType, int inObjectLayer) {
 	BodyCreationSettings* settings = new BodyCreationSettings(

@@ -13,6 +13,7 @@
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 
@@ -473,6 +474,23 @@ HL_PRIM _ShapeRef* HL_NAME(scaled_shape_create)(_ShapeRef* inShape, DVec3* inSca
     return ref;
 }
 DEFINE_PRIM(SHAPE, scaled_shape_create, SHAPE _STRUCT);
+
+HL_PRIM _ShapeRef* HL_NAME(rotated_translated_shape_create)(_ShapeRef* inShape, DVec3* inPosition, DVec3* inRotation) {
+	RotatedTranslatedShapeSettings* settings = new RotatedTranslatedShapeSettings(
+		Vec3Arg(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
+		QuatArg(inRotation->mF64[0],inRotation->mF64[1], inRotation->mF64[2], inRotation->mF64[3]),
+		inShape->ref
+	);
+
+	Shape* r = settings->Create().Get().GetPtr();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, rotated_translated_shape_create, SHAPE _STRUCT _STRUCT);
 
 HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* inShape, DVec3* inPosition, DVec3* inRotation, EMotionType inMotionType, int inObjectLayer) {
 	BodyCreationSettings* settings = new BodyCreationSettings(

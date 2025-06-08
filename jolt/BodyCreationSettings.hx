@@ -6,4 +6,5 @@ import h3d.Vector4;
 abstract BodyCreationSettings(hl.Abstract<"BodyCreationSettings">) {
     public static function create(shape:ShapeRef, pos:Vector4, rot:Vector4, motionType:MotionType, objectLayer:Int):BodyCreationSettings return null;
 
+    public function setAllowedDOFs(dofs:AllowedDOFs):Void {}
 }

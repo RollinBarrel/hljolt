@@ -520,6 +520,11 @@ HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* 
 }
 DEFINE_PRIM(BODYCREATIONSETTINGS, body_creation_settings_create, SHAPE _STRUCT _STRUCT _I32 _I32);
 
+HL_PRIM void HL_NAME(body_creation_settings_set_allowed_dofs)(BodyCreationSettings* settings, int dofs) {
+	settings->mAllowedDOFs = (EAllowedDOFs)dofs;
+}
+DEFINE_PRIM(_VOID, body_creation_settings_set_allowed_dofs, BODYCREATIONSETTINGS _I32);
+
 HL_PRIM int HL_NAME(body_interface_create_body)(BodyInterface* body_interface, BodyCreationSettings* settings) {
 	int id = body_interface->CreateBody(*settings)->GetID().GetIndexAndSequenceNumber();
 	delete settings;

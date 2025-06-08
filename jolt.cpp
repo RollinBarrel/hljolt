@@ -1,3 +1,4 @@
+#include "Jolt/Physics/EPhysicsUpdateError.h"
 #define HL_NAME(n) jolt_##n
 #include <hl.h>
 
@@ -397,7 +398,10 @@ HL_PRIM void HL_NAME(instance_get_body_interface_no_lock)(_JoltInstance* jolt, v
 DEFINE_PRIM(_VOID, instance_get_body_interface_no_lock, JOLTINST _FUN(_VOID, BODYIF));
 
 HL_PRIM int HL_NAME(instance_update)(_JoltInstance* jolt, double inDeltaTime, int inCollisionSteps) {
-	return (int)jolt->jolt->physics_system.Update((float)inDeltaTime, inCollisionSteps, &jolt->jolt->temp_allocator, &jolt->jolt->job_system);
+	hl_blocking(true);
+	EPhysicsUpdateError err = jolt->jolt->physics_system.Update((float)inDeltaTime, inCollisionSteps, &jolt->jolt->temp_allocator, &jolt->jolt->job_system);
+	hl_blocking(false);
+	return (int)err;
 }
 DEFINE_PRIM(_I32, instance_update, JOLTINST _F64 _I32);
 

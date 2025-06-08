@@ -518,14 +518,14 @@ HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* 
 	);
 	return settings;
 }
-DEFINE_PRIM(_STRUCT, body_creation_settings_create, SHAPE _STRUCT _STRUCT _I32 _I32);
+DEFINE_PRIM(BODYCREATIONSETTINGS, body_creation_settings_create, SHAPE _STRUCT _STRUCT _I32 _I32);
 
 HL_PRIM int HL_NAME(body_interface_create_body)(BodyInterface* body_interface, BodyCreationSettings* settings) {
 	int id = body_interface->CreateBody(*settings)->GetID().GetIndexAndSequenceNumber();
 	delete settings;
 	return id;
 }
-DEFINE_PRIM(_I32, body_interface_create_body, BODYIF _STRUCT);
+DEFINE_PRIM(_I32, body_interface_create_body, BODYIF BODYCREATIONSETTINGS);
 
 HL_PRIM void HL_NAME(body_interface_add_body)(BodyInterface* body_interface, uint32 bodyID, bool activate) {
 	body_interface->AddBody(BodyID(bodyID), (EActivation)!activate);

@@ -385,6 +385,17 @@ HL_PRIM void HL_NAME(instance_get_body_interface)(_JoltInstance* jolt, vclosure*
 }
 DEFINE_PRIM(_VOID, instance_get_body_interface, JOLTINST _FUN(_VOID, BODYIF));
 
+HL_PRIM void HL_NAME(instance_get_body_interface_no_lock)(_JoltInstance* jolt, vclosure* callback) {
+	BodyInterface& body_interface = jolt->jolt->physics_system.GetBodyInterfaceNoLock();
+
+	if(callback->hasValue) {
+		((void(*)(void*, BodyInterface*))callback->fun)(callback->value, &body_interface);
+	} else {
+		((void(*)(BodyInterface*))callback->fun)(&body_interface);
+	}
+}
+DEFINE_PRIM(_VOID, instance_get_body_interface_no_lock, JOLTINST _FUN(_VOID, BODYIF));
+
 HL_PRIM int HL_NAME(instance_update)(_JoltInstance* jolt, double inDeltaTime, int inCollisionSteps) {
 	return (int)jolt->jolt->physics_system.Update((float)inDeltaTime, inCollisionSteps, &jolt->jolt->temp_allocator, &jolt->jolt->job_system);
 }

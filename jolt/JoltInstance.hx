@@ -16,5 +16,6 @@ abstract JoltInstance(hl.Abstract<"JoltInstance">) {
     public function getGravity():Vector4 return null;
 
     public function getBodyInterface(callback:BodyInterface->Void):Void {}
+    public function getBodyInterfaceNoLock(callback:BodyInterface->Void):Void {}
     public function update(dt:Float, collisionSteps:Int):Int return -1;
 }

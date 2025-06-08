@@ -10,6 +10,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
@@ -26,6 +27,7 @@ using namespace literals;
 #define JOLTINST _ABSTRACT(JoltInstance)
 #define BODYIF _ABSTRACT(BodyInterface)
 #define BODY _ABSTRACT(Body)
+#define BODYCREATIONSETTINGS _ABSTRACT(BodyCreationSettings)
 #define SHAPE _ABSTRACT(_ShapeRef)
 #define SHAPESETTINGS _ABSTRACT(ShapeSettings)
 #define STATICCOMPOUNDSHAPESETTINGS _ABSTRACT(StaticCompoundShapeSettings)
@@ -406,6 +408,20 @@ HL_PRIM _ShapeRef* HL_NAME(sphere_shape_create)(double inRadius, PhysicsMaterial
     return ref;
 }
 DEFINE_PRIM(SHAPE, sphere_shape_create, _F64 PHYSMAT);
+
+HL_PRIM _ShapeRef* HL_NAME(capsule_shape_create)(double inHalfHeightOfCylinder, double inRadius, PhysicsMaterial* inMaterial) {
+	// Jolt does refcounts on this and will release it when there's no references
+	CapsuleShapeSettings* settings = new CapsuleShapeSettings(inHalfHeightOfCylinder, inRadius, inMaterial);
+
+	Shape* r = settings->Create().Get().GetPtr();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, capsule_shape_create, _F64 _F64 PHYSMAT);
 
 HL_PRIM _ShapeRef* HL_NAME(convex_hull_shape_create)(varray* inPoints, double inMaxConvexRadius, PhysicsMaterial* inMaterial) {
 	float* pts = hl_aptr(inPoints, float);

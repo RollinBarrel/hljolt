@@ -10,6 +10,7 @@ class Jolt {
 
     public static function boxShapeCreate(halfExtent:Vector4, convexRadius:Float, material:PhysicsMaterial = null):ShapeRef return null;
     public static function sphereShapeCreate(radius:Float, material:PhysicsMaterial = null):ShapeRef return null;
+    public static function convexHullShapeCreate(verts:hl.NativeArray<hl.F32>, convexRadius:Float, material:PhysicsMaterial = null):ShapeRef return null;
 
     public static function bodyCreationSettingsCreate(shape:ShapeRef, pos:Vector4, rot:Vector4, motionType:MotionType, objectLayer:Int):BodyCreationSettings return null;
 }

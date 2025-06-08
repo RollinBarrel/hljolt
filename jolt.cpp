@@ -10,6 +10,7 @@
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 
@@ -388,7 +389,6 @@ HL_PRIM _ShapeRef* HL_NAME(box_shape_create)(DVec3* inHalfExtent, double inConve
 }
 DEFINE_PRIM(SHAPE, box_shape_create, _STRUCT _F64 PHYSMAT);
 
-// inMaterial = nullptr
 HL_PRIM _ShapeRef* HL_NAME(sphere_shape_create)(double inRadius, PhysicsMaterial* inMaterial) {
 	// Jolt does refcounts on this and will release it when there's no references
 	SphereShapeSettings* settings = new SphereShapeSettings((float)inRadius, inMaterial);
@@ -402,6 +402,32 @@ HL_PRIM _ShapeRef* HL_NAME(sphere_shape_create)(double inRadius, PhysicsMaterial
     return ref;
 }
 DEFINE_PRIM(SHAPE, sphere_shape_create, _F64 PHYSMAT);
+
+HL_PRIM _ShapeRef* HL_NAME(convex_hull_shape_create)(varray* inPoints, double inMaxConvexRadius, PhysicsMaterial* inMaterial) {
+	float* pts = hl_aptr(inPoints, float);
+	int size = inPoints->size;
+	
+	int vecCount = size / 3;
+	Vec3* points = new Vec3[vecCount];
+	int pos = 0;
+	for (int i = 0; i < vecCount; i++) {
+		float x = pts[pos++];
+		float y = pts[pos++];
+		float z = pts[pos++];
+		points[i].Set(x, y, z);
+	}
+
+	ConvexHullShapeSettings* settings = new ConvexHullShapeSettings(points, vecCount, inMaxConvexRadius, inMaterial);
+
+	Shape* r = settings->Create().Get().GetPtr();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, convex_hull_shape_create, _ARR _F64 PHYSMAT);
 
 HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* inShape, DVec3* inPosition, DVec3* inRotation, EMotionType inMotionType, int inObjectLayer) {
 	BodyCreationSettings* settings = new BodyCreationSettings(

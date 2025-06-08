@@ -1,4 +1,3 @@
-#include "Jolt/Physics/EPhysicsUpdateError.h"
 #define HL_NAME(n) jolt_##n
 #include <hl.h>
 
@@ -67,11 +66,16 @@ public:
 
 	virtual bool ShouldCollide(ObjectLayer inLayer1, BroadPhaseLayer inLayer2) const override {
 		if(!shouldCollide) return true;
+		
+		bool res;
+		hl_blocking(false);
         if(shouldCollide->hasValue) {
-            return ((bool(*)(void*, int, int))shouldCollide->fun)(shouldCollide->value, inLayer1, inLayer2.GetValue());
+            res = ((bool(*)(void*, int, int))shouldCollide->fun)(shouldCollide->value, inLayer1, inLayer2.GetValue());
         } else {
-            return ((bool(*)(int, int))shouldCollide->fun)(inLayer1, inLayer2.GetValue());
+            res = ((bool(*)(int, int))shouldCollide->fun)(inLayer1, inLayer2.GetValue());
         }
+		hl_blocking(true);
+		return res;
 	}
 
 	ObjectVsBroadPhaseLayerFilterImpl() {
@@ -90,11 +94,16 @@ public:
 
 	virtual bool ShouldCollide(ObjectLayer inObject1, ObjectLayer inObject2) const override {
 		if(!shouldCollide) return true;
+
+		bool res;
+		hl_blocking(false);
         if(shouldCollide->hasValue) {
-            return ((bool(*)(void*, int, int))shouldCollide->fun)(shouldCollide->value, inObject1, inObject2);
+            res = ((bool(*)(void*, int, int))shouldCollide->fun)(shouldCollide->value, inObject1, inObject2);
         } else {
-            return ((bool(*)(int, int))shouldCollide->fun)(inObject1, inObject2);
+            res = ((bool(*)(int, int))shouldCollide->fun)(inObject1, inObject2);
         }
+		hl_blocking(true);
+		return res;
 	}
     
     ObjectLayerPairFilterImpl() {
@@ -122,11 +131,15 @@ public:
 		DVec3* baseOffset = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 		baseOffset->Set(inBaseOffset.GetX(), inBaseOffset.GetY(), inBaseOffset.GetZ());
 
+		int res;
+		hl_blocking(false);
         if(onContactValidate->hasValue) {
-            return (ValidateResult)((int(*)(void*, int, int, DVec3*, const CollideShapeResult*))onContactValidate->fun)(onContactValidate->value, body1, body2, baseOffset, &inCollisionResult);
+            res = ((int(*)(void*, int, int, DVec3*, const CollideShapeResult*))onContactValidate->fun)(onContactValidate->value, body1, body2, baseOffset, &inCollisionResult);
         } else {
-            return (ValidateResult)((int(*)(int, int, DVec3*, const CollideShapeResult*))onContactValidate->fun)(body1, body2, baseOffset, &inCollisionResult);
+            res = ((int(*)(int, int, DVec3*, const CollideShapeResult*))onContactValidate->fun)(body1, body2, baseOffset, &inCollisionResult);
         }
+		hl_blocking(true);
+		return (ValidateResult)res;
 	}
 
 	virtual void OnContactAdded(const Body &inBody1, const Body &inBody2, const ContactManifold &inManifold, ContactSettings &ioSettings) override {
@@ -135,11 +148,13 @@ public:
 		int body1 = inBody1.GetID().GetIndexAndSequenceNumber();
 		int body2 = inBody2.GetID().GetIndexAndSequenceNumber();
 
+		hl_blocking(false);
         if(onContactAdded->hasValue) {
-            return ((void(*)(void*, int, int, const ContactManifold*, ContactSettings*))onContactAdded->fun)(onContactAdded->value, body1, body2, &inManifold, &ioSettings);
+            ((void(*)(void*, int, int, const ContactManifold*, ContactSettings*))onContactAdded->fun)(onContactAdded->value, body1, body2, &inManifold, &ioSettings);
         } else {
-            return ((void(*)(int, int, const ContactManifold*, ContactSettings*))onContactAdded->fun)(body1, body2, &inManifold, &ioSettings);
+            ((void(*)(int, int, const ContactManifold*, ContactSettings*))onContactAdded->fun)(body1, body2, &inManifold, &ioSettings);
         }
+		hl_blocking(true);
 	}
 
 	virtual void OnContactPersisted(const Body &inBody1, const Body &inBody2, const ContactManifold &inManifold, ContactSettings &ioSettings) override {
@@ -148,11 +163,13 @@ public:
 		int body1 = inBody1.GetID().GetIndexAndSequenceNumber();
 		int body2 = inBody2.GetID().GetIndexAndSequenceNumber();
 
+		hl_blocking(false);
         if(onContactPersisted->hasValue) {
-            return ((void(*)(void*, int, int, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(onContactPersisted->value, body1, body2, &inManifold, &ioSettings);
+            ((void(*)(void*, int, int, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(onContactPersisted->value, body1, body2, &inManifold, &ioSettings);
         } else {
-            return ((void(*)(int, int, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(body1, body2, &inManifold, &ioSettings);
+            ((void(*)(int, int, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(body1, body2, &inManifold, &ioSettings);
         }
+		hl_blocking(true);
 	}
 
 	virtual void OnContactRemoved(const SubShapeIDPair &inSubShapePair) override {
@@ -163,11 +180,13 @@ public:
 		int shape1 = inSubShapePair.GetSubShapeID1().GetValue();
 		int shape2 = inSubShapePair.GetSubShapeID2().GetValue();
 
+		hl_blocking(false);
         if(onContactRemoved->hasValue) {
-            return ((void(*)(void*, int, int, int, int))onContactRemoved->fun)(onContactRemoved->value, body1, body2, shape1, shape2);
+            ((void(*)(void*, int, int, int, int))onContactRemoved->fun)(onContactRemoved->value, body1, body2, shape1, shape2);
         } else {
-            return ((void(*)(int, int, int, int))onContactRemoved->fun)(body1, body2, shape1, shape2);
+            ((void(*)(int, int, int, int))onContactRemoved->fun)(body1, body2, shape1, shape2);
         }
+		hl_blocking(true);
 	}
 };
 

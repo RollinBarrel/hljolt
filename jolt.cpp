@@ -25,6 +25,7 @@ using namespace JPH;
 using namespace literals;
 
 #define JOLTINST _ABSTRACT(JoltInstance)
+#define BODYLOCKIF _ABSTRACT(BodyLockInterface)
 #define BODYIF _ABSTRACT(BodyInterface)
 #define BODY _ABSTRACT(Body)
 #define BODYCREATIONSETTINGS _ABSTRACT(BodyCreationSettings)
@@ -394,6 +395,28 @@ HL_PRIM DVec3* HL_NAME(contact_manifold_get_world_space_normal)(ContactManifold*
 }
 DEFINE_PRIM(_STRUCT, contact_manifold_get_world_space_normal, CONTACTMANIFOLD);
 
+HL_PRIM void HL_NAME(instance_get_body_lock_interface)(_JoltInstance* jolt, vclosure* callback) {
+	const BodyLockInterface& body_lock_interface = jolt->jolt->physics_system.GetBodyLockInterface();
+
+	if(callback->hasValue) {
+		((void(*)(void*, const BodyLockInterface*))callback->fun)(callback->value, &body_lock_interface);
+	} else {
+		((void(*)(const BodyLockInterface*))callback->fun)(&body_lock_interface);
+	}
+}
+DEFINE_PRIM(_VOID, instance_get_body_lock_interface, JOLTINST _FUN(_VOID, BODYLOCKIF));
+
+HL_PRIM void HL_NAME(instance_get_body_lock_interface_no_lock)(_JoltInstance* jolt, vclosure* callback) {
+	const BodyLockInterfaceNoLock& body_lock_interface = jolt->jolt->physics_system.GetBodyLockInterfaceNoLock();
+
+	if(callback->hasValue) {
+		((void(*)(void*, const BodyLockInterface*))callback->fun)(callback->value, &body_lock_interface);
+	} else {
+		((void(*)(const BodyLockInterface*))callback->fun)(&body_lock_interface);
+	}
+}
+DEFINE_PRIM(_VOID, instance_get_body_lock_interface_no_lock, JOLTINST _FUN(_VOID, BODYLOCKIF));
+
 HL_PRIM void HL_NAME(instance_get_body_interface)(_JoltInstance* jolt, vclosure* callback) {
 	BodyInterface& body_interface = jolt->jolt->physics_system.GetBodyInterface();
 
@@ -567,6 +590,40 @@ HL_PRIM void HL_NAME(body_creation_settings_set_allowed_dofs)(BodyCreationSettin
 	settings->mAllowedDOFs = (EAllowedDOFs)dofs;
 }
 DEFINE_PRIM(_VOID, body_creation_settings_set_allowed_dofs, BODYCREATIONSETTINGS _I32);
+
+HL_PRIM void HL_NAME(body_lock_write)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
+	hl_blocking(true);
+	BodyLockWrite lock(*body_lock_interface, BodyID(bodyID));
+	hl_blocking(false);
+	
+	if (lock.Succeeded()) {
+		Body &body = lock.GetBody();
+		
+		if(callback->hasValue) {
+			((void(*)(void*, Body*))callback->fun)(callback->value, &body);
+		} else {
+			((void(*)(Body*))callback->fun)(&body);
+		}
+	}
+}
+DEFINE_PRIM(_VOID, body_lock_write, BODYLOCKIF _I32 _FUN(_VOID, BODY));
+
+HL_PRIM void HL_NAME(body_lock_read)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
+	hl_blocking(true);
+	BodyLockRead lock(*body_lock_interface, BodyID(bodyID));
+	hl_blocking(false);
+	
+	if (lock.Succeeded()) {
+		const Body &body = lock.GetBody();
+		
+		if(callback->hasValue) {
+			((void(*)(void*, const Body*))callback->fun)(callback->value, &body);
+		} else {
+			((void(*)(const Body*))callback->fun)(&body);
+		}
+	}
+}
+DEFINE_PRIM(_VOID, body_lock_read, BODYLOCKIF _I32 _FUN(_VOID, BODY));
 
 HL_PRIM int HL_NAME(body_interface_create_body)(BodyInterface* body_interface, BodyCreationSettings* settings) {
 	int id = body_interface->CreateBody(*settings)->GetID().GetIndexAndSequenceNumber();

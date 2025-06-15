@@ -626,53 +626,72 @@ HL_PRIM void HL_NAME(body_lock_read)(BodyLockInterface* body_lock_interface, uin
 DEFINE_PRIM(_VOID, body_lock_read, BODYLOCKIF _I32 _FUN(_VOID, BODY));
 
 HL_PRIM int HL_NAME(body_interface_create_body)(BodyInterface* body_interface, BodyCreationSettings* settings) {
+	hl_blocking(true);
 	int id = body_interface->CreateBody(*settings)->GetID().GetIndexAndSequenceNumber();
+	hl_blocking(false);
 	delete settings;
 	return id;
 }
 DEFINE_PRIM(_I32, body_interface_create_body, BODYIF BODYCREATIONSETTINGS);
 
 HL_PRIM void HL_NAME(body_interface_add_body)(BodyInterface* body_interface, uint32 bodyID, bool activate) {
+	hl_blocking(true);
 	body_interface->AddBody(BodyID(bodyID), (EActivation)!activate);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_body, BODYIF _I32 _BOOL);
 
 HL_PRIM void HL_NAME(body_interface_remove_body)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	body_interface->RemoveBody(BodyID(bodyID));
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_remove_body, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_destroy_body)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	body_interface->DestroyBody(BodyID(bodyID));
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_destroy_body, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inPosition, bool activate) {
+	hl_blocking(true);
 	body_interface->SetPosition(
 		BodyID(bodyID),
-		RVec3((Real)inPosition->mF64[0], (Real)inPosition->mF64[1], (Real)inPosition->mF64[2]),
+		RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
 		(EActivation)!activate
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_position, BODYIF _I32 _STRUCT _BOOL);
 
 HL_PRIM void HL_NAME(body_interface_activate_body)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	body_interface->ActivateBody(BodyID(bodyID));
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_activate_body, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_deactivate_body)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	body_interface->DeactivateBody(BodyID(bodyID));
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_deactivate_body, BODYIF _I32);
 
 HL_PRIM bool HL_NAME(body_interface_is_active)(BodyInterface* body_interface, uint32 bodyID) {
-	return body_interface->IsActive(BodyID(bodyID));
+	hl_blocking(true);
+	bool res = body_interface->IsActive(BodyID(bodyID));
+	hl_blocking(false);
+	return res;
 }
 DEFINE_PRIM(_BOOL, body_interface_is_active, BODYIF _I32);
 
 HL_PRIM DVec3* HL_NAME(body_interface_get_position)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	RVec3 r = body_interface->GetPosition(BodyID(bodyID));
+	hl_blocking(false);
 
 	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 	d->Set(r.GetX(), r.GetY(), r.GetZ());
@@ -681,7 +700,9 @@ HL_PRIM DVec3* HL_NAME(body_interface_get_position)(BodyInterface* body_interfac
 DEFINE_PRIM(_STRUCT, body_interface_get_position, BODYIF _I32);
 
 HL_PRIM DVec3* HL_NAME(body_interface_get_center_of_mass_position)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	RVec3 r = body_interface->GetCenterOfMassPosition(BodyID(bodyID));
+	hl_blocking(false);
 
 	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 	d->Set(r.GetX(), r.GetY(), r.GetZ());
@@ -690,16 +711,20 @@ HL_PRIM DVec3* HL_NAME(body_interface_get_center_of_mass_position)(BodyInterface
 DEFINE_PRIM(_STRUCT, body_interface_get_center_of_mass_position, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_rotation)(BodyInterface* body_interface, uint32 bodyID, DVec3* inRotation, bool activate) {
+	hl_blocking(true);
 	body_interface->SetRotation(
 		BodyID(bodyID),
 		Quat((float)inRotation->mF64[0],(float)inRotation->mF64[1], (float)inRotation->mF64[2], (float)inRotation->mF64[3]),
 		(EActivation)!activate
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_rotation, BODYIF _I32 _STRUCT _BOOL);
 
 HL_PRIM DVec3* HL_NAME(body_interface_get_rotation)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	Quat r = body_interface->GetRotation(BodyID(bodyID));
+	hl_blocking(false);
 
 	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 	d->Set(r.GetX(), r.GetY(), r.GetZ());
@@ -709,12 +734,16 @@ HL_PRIM DVec3* HL_NAME(body_interface_get_rotation)(BodyInterface* body_interfac
 DEFINE_PRIM(_STRUCT, body_interface_get_rotation, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_linear_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inLinearVelocity) {
+	hl_blocking(true);
 	body_interface->SetLinearVelocity(BodyID(bodyID), inLinearVelocity->ToVec3RoundDown());
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_linear_velocity, BODYIF _I32 _STRUCT);
 
 HL_PRIM DVec3* HL_NAME(body_interface_get_linear_velocity)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	Vec3 r = body_interface->GetLinearVelocity(BodyID(bodyID));
+	hl_blocking(false);
 
 	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 	d->Set(r.GetX(), r.GetY(), r.GetZ());
@@ -723,12 +752,16 @@ HL_PRIM DVec3* HL_NAME(body_interface_get_linear_velocity)(BodyInterface* body_i
 DEFINE_PRIM(_STRUCT, body_interface_get_linear_velocity, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_angular_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inAngularVelocity) {
+	hl_blocking(true);
 	body_interface->SetAngularVelocity(BodyID(bodyID), inAngularVelocity->ToVec3RoundDown());
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_angular_velocity, BODYIF _I32 _STRUCT);
 
 HL_PRIM DVec3* HL_NAME(body_interface_get_angular_velocity)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
 	Vec3 r = body_interface->GetAngularVelocity(BodyID(bodyID));
+	hl_blocking(false);
 
 	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 	d->Set(r.GetX(), r.GetY(), r.GetZ());
@@ -737,10 +770,12 @@ HL_PRIM DVec3* HL_NAME(body_interface_get_angular_velocity)(BodyInterface* body_
 DEFINE_PRIM(_STRUCT, body_interface_get_angular_velocity, BODYIF _I32);
 
 HL_PRIM DVec3* HL_NAME(body_interface_get_point_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inPoint) {
+	hl_blocking(true);
 	Vec3 r = body_interface->GetPointVelocity(
 		BodyID(bodyID),
 		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2])
 	);
+	hl_blocking(false);
 
 	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 	d->Set(r.GetX(), r.GetY(), r.GetZ());
@@ -749,95 +784,127 @@ HL_PRIM DVec3* HL_NAME(body_interface_get_point_velocity)(BodyInterface* body_in
 DEFINE_PRIM(_STRUCT, body_interface_get_point_velocity, BODYIF _I32 _STRUCT);
 
 HL_PRIM void HL_NAME(body_interface_add_force)(BodyInterface* body_interface, uint32 bodyID, DVec3* inForce, bool activate) {
+	hl_blocking(true);
 	body_interface->AddForce(
 		BodyID(bodyID),
 		Vec3Arg(inForce->mF64[0], inForce->mF64[1], inForce->mF64[2]),
 		(EActivation)!activate
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_force, BODYIF _I32 _STRUCT _BOOL);
 
 HL_PRIM void HL_NAME(body_interface_add_force_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inForce, DVec3* inPoint, bool activate) {
+	hl_blocking(true);
 	body_interface->AddForce(
 		BodyID(bodyID),
 		Vec3Arg(inForce->mF64[0], inForce->mF64[1], inForce->mF64[2]),
 		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2]),
 		(EActivation)!activate
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_force_at_position, BODYIF _I32 _STRUCT _STRUCT _BOOL);
 
 HL_PRIM void HL_NAME(body_interface_add_torque)(BodyInterface* body_interface, uint32 bodyID, DVec3* inTorque, bool activate) {
+	hl_blocking(true);
 	body_interface->AddTorque(
 		BodyID(bodyID),
 		Vec3Arg(inTorque->mF64[0], inTorque->mF64[1], inTorque->mF64[2]),
 		(EActivation)!activate
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_torque, BODYIF _I32 _STRUCT _BOOL);
 
 HL_PRIM void HL_NAME(body_interface_add_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec3* inImpulse) {
+	hl_blocking(true);
 	body_interface->AddImpulse(
 		BodyID(bodyID),
 		Vec3Arg(inImpulse->mF64[0], inImpulse->mF64[1], inImpulse->mF64[2])
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_impulse, BODYIF _I32 _STRUCT);
 
 HL_PRIM void HL_NAME(body_interface_add_impulse_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inImpulse, DVec3* inPoint) {
+	hl_blocking(true);
 	body_interface->AddImpulse(
 		BodyID(bodyID),
 		Vec3Arg(inImpulse->mF64[0], inImpulse->mF64[1], inImpulse->mF64[2]),
 		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2])
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_impulse_at_position, BODYIF _I32 _STRUCT _STRUCT);
 
 HL_PRIM void HL_NAME(body_interface_add_angular_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec3* inAngularImpulse) {
+	hl_blocking(true);
 	body_interface->AddAngularImpulse(
 		BodyID(bodyID),
 		Vec3Arg(inAngularImpulse->mF64[0], inAngularImpulse->mF64[1], inAngularImpulse->mF64[2])
 	);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_angular_impulse, BODYIF _I32 _STRUCT);
 
 HL_PRIM void HL_NAME(body_interface_set_restitution)(BodyInterface* body_interface, uint32 bodyID, double inRestitution) {
+	hl_blocking(true);
 	body_interface->SetRestitution(BodyID(bodyID), (float)inRestitution);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_restitution, BODYIF _I32 _F64);
 
 HL_PRIM double HL_NAME(body_interface_get_restitution)(BodyInterface* body_interface, uint32 bodyID) {
-	return body_interface->GetRestitution(BodyID(bodyID));
+	hl_blocking(true);
+	double res = body_interface->GetRestitution(BodyID(bodyID));
+	hl_blocking(false);
+	return res;
 }
 DEFINE_PRIM(_F64, body_interface_get_restitution, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_friction)(BodyInterface* body_interface, uint32 bodyID, double inFriction) {
+	hl_blocking(true);
 	body_interface->SetFriction(BodyID(bodyID), (float)inFriction);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_friction, BODYIF _I32 _F64);
 
 HL_PRIM double HL_NAME(body_interface_get_friction)(BodyInterface* body_interface, uint32 bodyID) {
-	return body_interface->GetFriction(BodyID(bodyID));
+	hl_blocking(true);
+	double res = body_interface->GetFriction(BodyID(bodyID));
+	hl_blocking(false);
+	return res;
 }
 DEFINE_PRIM(_F64, body_interface_get_friction, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_gravity_factor)(BodyInterface* body_interface, uint32 bodyID, double inGravityFactor) {
+	hl_blocking(true);
 	body_interface->SetGravityFactor(BodyID(bodyID), (float)inGravityFactor);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_gravity_factor, BODYIF _I32 _F64);
 
 HL_PRIM double HL_NAME(body_interface_get_gravity_factor)(BodyInterface* body_interface, uint32 bodyID) {
-	return body_interface->GetGravityFactor(BodyID(bodyID));
+	hl_blocking(true);
+	double res = body_interface->GetGravityFactor(BodyID(bodyID));
+	hl_blocking(false);
+	return res;
 }
 DEFINE_PRIM(_F64, body_interface_get_gravity_factor, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_user_data)(BodyInterface* body_interface, uint32 bodyID, void* inUserData) {
+	hl_blocking(true);
 	body_interface->SetUserData(BodyID(bodyID), (unsigned long)inUserData);
+	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_user_data, BODYIF _I32 _DYN);
 
 HL_PRIM void* HL_NAME(body_interface_get_user_data)(BodyInterface* body_interface, uint32 bodyID) {
-	return (void*)body_interface->GetUserData(BodyID(bodyID));
+	hl_blocking(true);
+	void* res = (void*)body_interface->GetUserData(BodyID(bodyID));
+	hl_blocking(false);
+	return res;
 }
 DEFINE_PRIM(_DYN, body_interface_get_user_data, BODYIF _I32);
 

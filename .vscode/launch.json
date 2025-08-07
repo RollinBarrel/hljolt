@@ -14,14 +14,6 @@
                 "LD_LIBRARY_PATH": ".",
             },
             "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Launch lightgun",
-            "program": "hl",
-            "args": ["/home/max/d/lightgun/game.hl"],
-            "cwd": "/home/max/d/lightgun"
         }
     ]
 }

@@ -17,5 +17,8 @@ abstract JoltInstance(hl.Abstract<"JoltInstance">) {
 
     public function getBodyInterface(callback:BodyInterface->Void):Void {}
     public function getBodyInterfaceNoLock(callback:BodyInterface->Void):Void {}
+    public function getNarrowPhaseQuery(callback:NarrowPhaseQuery->Void):Void {}
+    public function getNarrowPhaseQueryNoLock(callback:NarrowPhaseQuery->Void):Void {}
+    public function getBodyLockInterface(callback:BodyLockInterface->Void):Void {}
     public function update(dt:Float, collisionSteps:Int):Int return -1;
 }

@@ -8,6 +8,14 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+
+#include <Jolt/Physics/Collision/ObjectLayer.h>
+#include <Jolt/Physics/Collision/RayCast.h>
+#include "Jolt/Physics/Collision/ShapeCast.h"
+#include "Jolt/Physics/Collision/CollisionCollectorImpl.h"
+#include <Jolt/Physics/Collision/CastResult.h>
+#include "Jolt/Physics/Collision/NarrowPhaseQuery.h"
+#include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
@@ -27,8 +35,11 @@ using namespace literals;
 #define JOLTINST _ABSTRACT(JoltInstance)
 #define BODYLOCKIF _ABSTRACT(BodyLockInterface)
 #define BODYIF _ABSTRACT(BodyInterface)
+#define NARROWQUERY _ABSTRACT(NarrowPhaseQuery)
+#define SHAPECASTRES _ABSTRACT(ShapeCastResult)
 #define BODY _ABSTRACT(Body)
 #define BODYCREATIONSETTINGS _ABSTRACT(BodyCreationSettings)
+#define MOTIONPROPS _ABSTRACT(MotionProperties)
 #define SHAPE _ABSTRACT(_ShapeRef)
 #define SHAPESETTINGS _ABSTRACT(ShapeSettings)
 #define STATICCOMPOUNDSHAPESETTINGS _ABSTRACT(StaticCompoundShapeSettings)
@@ -259,6 +270,80 @@ void finalize_jolt_instance(_JoltInstance* jolt) {
     delete jolt->jolt;
 }
 
+class BroadPhaseLayerFilterHL : public BroadPhaseLayerFilter {
+public:
+	vclosure* shouldCollide;
+	bool ShouldCollide(BroadPhaseLayer inLayer) const override {
+		if (!shouldCollide)
+			return true;
+
+		bool res;
+		hl_blocking(false);
+        if(shouldCollide->hasValue) {
+            res = ((bool(*)(void*, int))shouldCollide->fun)(shouldCollide->value, inLayer.GetValue());
+        } else {
+            res = ((bool(*)(int))shouldCollide->fun)(inLayer.GetValue());
+        }
+		hl_blocking(true);
+		return res;
+	}
+};
+
+class ObjectLayerFilterHL : public ObjectLayerFilter {
+public:
+	vclosure* shouldCollide;
+	bool ShouldCollide(ObjectLayer inLayer) const override {
+		if (!shouldCollide)
+			return true;
+
+		bool res;
+		hl_blocking(false);
+        if(shouldCollide->hasValue) {
+            res = ((bool(*)(void*, int))shouldCollide->fun)(shouldCollide->value, inLayer);
+        } else {
+            res = ((bool(*)(int))shouldCollide->fun)(inLayer);
+        }
+		hl_blocking(true);
+		return res;
+	}
+};
+
+class BodyFilterHL : public BodyFilter {
+public:
+	vclosure* shouldCollide;
+	vclosure* shouldCollideLocked;
+
+	bool ShouldCollide(const BodyID &inBodyID) const override {
+		if (!shouldCollide)
+			return true;
+
+		bool res;
+		hl_blocking(false);
+        if(shouldCollide->hasValue) {
+            res = ((bool(*)(void*, int))shouldCollide->fun)(shouldCollide->value, inBodyID.GetIndexAndSequenceNumber());
+        } else {
+            res = ((bool(*)(int))shouldCollide->fun)(inBodyID.GetIndexAndSequenceNumber());
+        }
+		hl_blocking(true);
+		return res;
+	}
+
+	bool ShouldCollideLocked(const Body &inBody) const override {
+		if (!shouldCollideLocked)
+			return true;
+
+		bool res;
+		hl_blocking(false);
+        if(shouldCollideLocked->hasValue) {
+            res = ((bool(*)(void*, const Body*))shouldCollideLocked->fun)(shouldCollideLocked->value, &inBody);
+        } else {
+            res = ((bool(*)(const Body*))shouldCollideLocked->fun)(&inBody);
+        }
+		hl_blocking(true);
+		return res;
+	}
+};
+
 HL_PRIM void HL_NAME(initialize)() {
     RegisterDefaultAllocator();
 
@@ -395,6 +480,16 @@ HL_PRIM DVec3* HL_NAME(contact_manifold_get_world_space_normal)(ContactManifold*
 }
 DEFINE_PRIM(_STRUCT, contact_manifold_get_world_space_normal, CONTACTMANIFOLD);
 
+HL_PRIM void HL_NAME(contact_settings_set_combined_friction)(ContactSettings* settings, double friction) {
+	settings->mCombinedFriction = friction;
+}
+DEFINE_PRIM(_VOID, contact_settings_set_combined_friction, CONTACTSETTINGS _F64);
+
+HL_PRIM void HL_NAME(contact_settings_set_combined_restitution)(ContactSettings* settings, double restitution) {
+	settings->mCombinedRestitution = restitution;
+}
+DEFINE_PRIM(_VOID, contact_settings_set_combined_restitution, CONTACTSETTINGS _F64);
+
 HL_PRIM void HL_NAME(instance_get_body_lock_interface)(_JoltInstance* jolt, vclosure* callback) {
 	const BodyLockInterface& body_lock_interface = jolt->jolt->physics_system.GetBodyLockInterface();
 
@@ -438,6 +533,28 @@ HL_PRIM void HL_NAME(instance_get_body_interface_no_lock)(_JoltInstance* jolt, v
 	}
 }
 DEFINE_PRIM(_VOID, instance_get_body_interface_no_lock, JOLTINST _FUN(_VOID, BODYIF));
+
+HL_PRIM void HL_NAME(instance_get_narrow_phase_query)(_JoltInstance* jolt, vclosure* callback) {
+	const NarrowPhaseQuery& narrow_phase_query = jolt->jolt->physics_system.GetNarrowPhaseQuery();
+
+	if(callback->hasValue) {
+		((void(*)(void*, const NarrowPhaseQuery*))callback->fun)(callback->value, &narrow_phase_query);
+	} else {
+		((void(*)(const NarrowPhaseQuery*))callback->fun)(&narrow_phase_query);
+	}
+}
+DEFINE_PRIM(_VOID, instance_get_narrow_phase_query, JOLTINST _FUN(_VOID, NARROWQUERY));
+
+HL_PRIM void HL_NAME(instance_get_narrow_phase_query_no_lock)(_JoltInstance* jolt, vclosure* callback) {
+	const NarrowPhaseQuery& narrow_phase_query = jolt->jolt->physics_system.GetNarrowPhaseQueryNoLock();
+
+	if(callback->hasValue) {
+		((void(*)(void*, const NarrowPhaseQuery*))callback->fun)(callback->value, &narrow_phase_query);
+	} else {
+		((void(*)(const NarrowPhaseQuery*))callback->fun)(&narrow_phase_query);
+	}
+}
+DEFINE_PRIM(_VOID, instance_get_narrow_phase_query_no_lock, JOLTINST _FUN(_VOID, NARROWQUERY));
 
 HL_PRIM int HL_NAME(instance_update)(_JoltInstance* jolt, double inDeltaTime, int inCollisionSteps) {
 	hl_blocking(true);
@@ -591,7 +708,7 @@ HL_PRIM void HL_NAME(body_creation_settings_set_allowed_dofs)(BodyCreationSettin
 }
 DEFINE_PRIM(_VOID, body_creation_settings_set_allowed_dofs, BODYCREATIONSETTINGS _I32);
 
-HL_PRIM void HL_NAME(body_lock_write)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
+HL_PRIM void HL_NAME(body_lock_interface_lock_write)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
 	hl_blocking(true);
 	BodyLockWrite lock(*body_lock_interface, BodyID(bodyID));
 	hl_blocking(false);
@@ -606,9 +723,9 @@ HL_PRIM void HL_NAME(body_lock_write)(BodyLockInterface* body_lock_interface, ui
 		}
 	}
 }
-DEFINE_PRIM(_VOID, body_lock_write, BODYLOCKIF _I32 _FUN(_VOID, BODY));
+DEFINE_PRIM(_VOID, body_lock_interface_lock_write, BODYLOCKIF _I32 _FUN(_VOID, BODY));
 
-HL_PRIM void HL_NAME(body_lock_read)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
+HL_PRIM void HL_NAME(body_lock_interface_lock_read)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
 	hl_blocking(true);
 	BodyLockRead lock(*body_lock_interface, BodyID(bodyID));
 	hl_blocking(false);
@@ -623,7 +740,7 @@ HL_PRIM void HL_NAME(body_lock_read)(BodyLockInterface* body_lock_interface, uin
 		}
 	}
 }
-DEFINE_PRIM(_VOID, body_lock_read, BODYLOCKIF _I32 _FUN(_VOID, BODY));
+DEFINE_PRIM(_VOID, body_lock_interface_lock_read, BODYLOCKIF _I32 _FUN(_VOID, BODY));
 
 HL_PRIM int HL_NAME(body_interface_create_body)(BodyInterface* body_interface, BodyCreationSettings* settings) {
 	hl_blocking(true);
@@ -687,6 +804,27 @@ HL_PRIM bool HL_NAME(body_interface_is_active)(BodyInterface* body_interface, ui
 	return res;
 }
 DEFINE_PRIM(_BOOL, body_interface_is_active, BODYIF _I32);
+
+HL_PRIM _ShapeRef* HL_NAME(body_interface_get_shape)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
+	const Shape* r = body_interface->GetShape(BodyID(bodyID));
+	hl_blocking(false);
+
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = (Shape*)r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, body_interface_get_shape, BODYIF _I32);
+
+HL_PRIM void HL_NAME(body_interface_set_shape)(BodyInterface* body_interface, uint32 bodyID, _ShapeRef* inShape, bool inUpdateMassProperties, bool activate) {
+	hl_blocking(true);
+	body_interface->SetShape(BodyID(bodyID), inShape->ref, inUpdateMassProperties, (EActivation)!activate);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, body_interface_set_shape, BODYIF _I32 SHAPE _BOOL _BOOL);
 
 HL_PRIM DVec3* HL_NAME(body_interface_get_position)(BodyInterface* body_interface, uint32 bodyID) {
 	hl_blocking(true);
@@ -895,7 +1033,7 @@ DEFINE_PRIM(_F64, body_interface_get_gravity_factor, BODYIF _I32);
 
 HL_PRIM void HL_NAME(body_interface_set_user_data)(BodyInterface* body_interface, uint32 bodyID, void* inUserData) {
 	hl_blocking(true);
-	body_interface->SetUserData(BodyID(bodyID), (unsigned long)inUserData);
+	body_interface->SetUserData(BodyID(bodyID), (unsigned long long)inUserData);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_user_data, BODYIF _I32 _DYN);
@@ -908,8 +1046,255 @@ HL_PRIM void* HL_NAME(body_interface_get_user_data)(BodyInterface* body_interfac
 }
 DEFINE_PRIM(_DYN, body_interface_get_user_data, BODYIF _I32);
 
+// TODO: also expose variant that supports multiple hits
+HL_PRIM RayCastResult* HL_NAME(narrow_phase_query_cast_ray)(NarrowPhaseQuery* narrow_phase_query, DVec3* origin, DVec3* direction, vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback) {
+	RRayCast ray;
+	ray.mOrigin = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
+	ray.mDirection = Vec3(direction->mF64[0], direction->mF64[1], direction->mF64[2]);
 
-// BodyInterface::AddBodiesPrepare
-// BodyInterface::AddBodiesFinalize
-// BodyInterface::AddBodiesAbort
-// BodyInterface::RemoveBodies
+	RayCastResult* hit = (RayCastResult*)hl_gc_alloc_noptr(sizeof(RayCastResult));
+	hit->Reset();
+
+	BroadPhaseLayerFilterHL broadPhaseLayerFilter = {};
+	if (broadPhaseLayerFilterCallback) {
+		broadPhaseLayerFilter.shouldCollide = broadPhaseLayerFilterCallback;
+	}
+
+	ObjectLayerFilterHL objectLayerFilter = {};
+	if (objectLayerFilterCallback) {
+		objectLayerFilter.shouldCollide = objectLayerFilterCallback;
+	}
+
+	BodyFilterHL bodyFilter = {};
+	if (bodyFilterCallback) {
+		bodyFilter.shouldCollide = bodyFilterCallback;
+	}
+	
+	hl_blocking(true);
+	narrow_phase_query->CastRay(ray, *hit, broadPhaseLayerFilter, objectLayerFilter, bodyFilter);
+	hl_blocking(false);
+
+	return hit;
+}
+DEFINE_PRIM(_STRUCT, narrow_phase_query_cast_ray, NARROWQUERY _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32));
+
+HL_PRIM void HL_NAME(narrow_phase_query_cast_shape)(NarrowPhaseQuery* narrow_phase_query, _ShapeRef* shape, DVec3* origin, DVec3* rotation, DVec3* direction, vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback, vclosure* callback) {
+	RVec3 pos = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
+	RShapeCast shapeCast = RShapeCast::sFromWorldTransform(
+		shape->ref,
+		Vec3::sOne(),
+		RMat44::sRotationTranslation(
+			QuatArg(rotation->mF64[0], rotation->mF64[1], rotation->mF64[2], rotation->mF64[3]),
+			pos
+		),
+		Vec3Arg(direction->mF64[0], direction->mF64[1], direction->mF64[2])
+	);
+
+	// TODO: expose more options
+	ShapeCastSettings settings = {};
+
+	AllHitCollisionCollector<CastShapeCollector> collector = {};
+
+	BroadPhaseLayerFilterHL broadPhaseLayerFilter = {};
+	if (broadPhaseLayerFilterCallback) {
+		broadPhaseLayerFilter.shouldCollide = broadPhaseLayerFilterCallback;
+	}
+
+	ObjectLayerFilterHL objectLayerFilter = {};
+	if (objectLayerFilterCallback) {
+		objectLayerFilter.shouldCollide = objectLayerFilterCallback;
+	}
+
+	BodyFilterHL bodyFilter = {};
+	if (bodyFilterCallback) {
+		bodyFilter.shouldCollide = bodyFilterCallback;
+	}
+
+	hl_blocking(true);
+	narrow_phase_query->CastShape(
+		shapeCast,
+		settings,
+		pos,
+		collector,
+		broadPhaseLayerFilter,
+		objectLayerFilter,
+		bodyFilter
+		// shapeFilter
+	);
+	hl_blocking(false);
+
+	varray* hits;
+	if (collector.HadHit()) {
+		hits = hl_alloc_array(&hlt_dynobj, collector.mHits.size());
+		ShapeCastResult** arr = hl_aptr(hits, ShapeCastResult*);
+		for (unsigned int i = 0; i < collector.mHits.size(); ++i){
+			arr[i] = &collector.mHits[i];
+		}
+	} else {
+		hits = nullptr;
+	}
+
+	if (callback->hasValue) {
+		((void(*)(void*, varray*))callback->fun)(callback->value, hits);
+	} else {
+		((void(*)(varray*))callback->fun)(hits);
+	}
+}
+DEFINE_PRIM(_VOID, narrow_phase_query_cast_shape, NARROWQUERY SHAPE _STRUCT _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_VOID, _ARR));
+
+HL_PRIM DVec3* HL_NAME(shape_cast_result_get_contact_point_on1)(ShapeCastResult* shape_cast_result) {
+	Vec3 point = shape_cast_result->mContactPointOn1;
+
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(point.GetX(), point.GetY(), point.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, shape_cast_result_get_contact_point_on1, SHAPECASTRES);
+
+HL_PRIM DVec3* HL_NAME(shape_cast_result_get_contact_point_on2)(ShapeCastResult* shape_cast_result) {
+	Vec3 point = shape_cast_result->mContactPointOn2;
+
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(point.GetX(), point.GetY(), point.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, shape_cast_result_get_contact_point_on2, SHAPECASTRES);
+
+HL_PRIM DVec3* HL_NAME(shape_cast_result_get_penetration_axis)(ShapeCastResult* shape_cast_result) {
+	Vec3 axis = shape_cast_result->mPenetrationAxis;
+
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(axis.GetX(), axis.GetY(), axis.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, shape_cast_result_get_penetration_axis, SHAPECASTRES);
+
+HL_PRIM double HL_NAME(shape_cast_result_get_penetration_depth)(ShapeCastResult* shape_cast_result) {
+	return shape_cast_result->mPenetrationDepth;
+}
+DEFINE_PRIM(_F64, shape_cast_result_get_penetration_depth, SHAPECASTRES);
+
+HL_PRIM int HL_NAME(shape_cast_result_get_sub_shape_id1)(ShapeCastResult* shape_cast_result) {
+	return shape_cast_result->mSubShapeID1.GetValue();
+}
+DEFINE_PRIM(_I32, shape_cast_result_get_sub_shape_id1, SHAPECASTRES);
+
+HL_PRIM int HL_NAME(shape_cast_result_get_sub_shape_id2)(ShapeCastResult* shape_cast_result) {
+	return shape_cast_result->mSubShapeID2.GetValue();
+}
+DEFINE_PRIM(_I32, shape_cast_result_get_sub_shape_id2, SHAPECASTRES);
+
+HL_PRIM int HL_NAME(shape_cast_result_get_body_id2)(ShapeCastResult* shape_cast_result) {
+	return shape_cast_result->mBodyID2.GetIndexAndSequenceNumber();
+}
+DEFINE_PRIM(_I32, shape_cast_result_get_body_id2, SHAPECASTRES);
+
+HL_PRIM double HL_NAME(shape_cast_result_get_fraction)(ShapeCastResult* shape_cast_result) {
+	return shape_cast_result->mFraction;
+}
+DEFINE_PRIM(_F64, shape_cast_result_get_fraction, SHAPECASTRES);
+
+HL_PRIM bool HL_NAME(shape_cast_result_is_backface)(ShapeCastResult* shape_cast_result) {
+	return shape_cast_result->mIsBackFaceHit;
+}
+DEFINE_PRIM(_BOOL, shape_cast_result_is_backface, SHAPECASTRES);
+
+HL_PRIM void HL_NAME(body_reset_force)(Body* body) {
+	body->ResetForce();
+}
+DEFINE_PRIM(_VOID, body_reset_force, BODY);
+
+HL_PRIM void HL_NAME(body_reset_torque)(Body* body) {
+	body->ResetTorque();
+}
+DEFINE_PRIM(_VOID, body_reset_torque, BODY);
+
+HL_PRIM _ShapeRef* HL_NAME(body_get_shape)(Body* body) {
+	const Shape* r = body->GetShape();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = (Shape*)r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, body_get_shape, BODY);
+
+HL_PRIM MotionProperties* HL_NAME(body_get_motion_properties)(Body* body) {
+	return body->GetMotionProperties();
+}
+DEFINE_PRIM(MOTIONPROPS, body_get_motion_properties, BODY);
+
+HL_PRIM DVec3* HL_NAME(body_get_world_space_surface_normal)(Body* body, int inSubShapeID, DVec3* inPosition) {
+	RVec3 pos = RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]);
+	SubShapeID subShapeID;
+	subShapeID.SetValue(inSubShapeID);
+	Vec3 normal = body->GetWorldSpaceSurfaceNormal(subShapeID, pos);
+
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(normal.GetX(), normal.GetY(), normal.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, body_get_world_space_surface_normal, BODY _I32 _STRUCT);
+
+HL_PRIM double HL_NAME(motion_properties_get_inverse_mass)(MotionProperties* motion_properties) {
+	return motion_properties->GetInverseMass();
+}
+DEFINE_PRIM(_F64, motion_properties_get_inverse_mass, MOTIONPROPS);
+
+HL_PRIM void HL_NAME(motion_properties_scale_to_mass)(MotionProperties* motion_properties, double inMass) {
+	motion_properties->ScaleToMass(inMass);
+}
+DEFINE_PRIM(_VOID, motion_properties_scale_to_mass, MOTIONPROPS _F64);
+
+HL_PRIM double HL_NAME(motion_properties_get_linear_damping)(MotionProperties* motion_properties) {
+	return motion_properties->GetLinearDamping();
+}
+DEFINE_PRIM(_F64, motion_properties_get_linear_damping, MOTIONPROPS);
+
+HL_PRIM void HL_NAME(motion_properties_set_linear_damping)(MotionProperties* motion_properties, double damping) {
+	motion_properties->SetLinearDamping(damping);
+}
+DEFINE_PRIM(_VOID, motion_properties_set_linear_damping, MOTIONPROPS _F64);
+
+HL_PRIM double HL_NAME(motion_properties_get_angular_damping)(MotionProperties* motion_properties) {
+	return motion_properties->GetAngularDamping();
+}
+DEFINE_PRIM(_F64, motion_properties_get_angular_damping, MOTIONPROPS);
+
+HL_PRIM void HL_NAME(motion_properties_set_angular_damping)(MotionProperties* motion_properties, double damping) {
+	motion_properties->SetAngularDamping(damping);
+}
+DEFINE_PRIM(_VOID, motion_properties_set_angular_damping, MOTIONPROPS _F64);
+
+HL_PRIM int HL_NAME(shape_get_sub_type)(_ShapeRef* shape) {
+	return (int)shape->ref->GetSubType();
+}
+DEFINE_PRIM(_I32, shape_get_sub_type, SHAPE);
+
+HL_PRIM _ShapeRef* HL_NAME(shape_scale)(_ShapeRef* shape, DVec3* inScale) {
+	Shape::ShapeResult scaled = shape->ref->ScaleShape(Vec3Arg(inScale->mF64[0], inScale->mF64[1], inScale->mF64[2]));
+	// JPH_ASSERT(scaled.IsValid());
+
+	Shape* r = scaled.Get();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = (Shape*)r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, shape_scale, SHAPE _STRUCT);
+
+HL_PRIM _ShapeRef* HL_NAME(shape_scaled_get_inner_shape)(_ShapeRef* shape) {
+	JPH_ASSERT(shape->ref->GetSubType() == EShapeSubType::Scaled);
+
+	const Shape* r = ((ScaledShape*)shape->ref)->GetInnerShape();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = (Shape*)r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, shape_scaled_get_inner_shape, SHAPE);

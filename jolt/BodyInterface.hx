@@ -1,21 +1,6 @@
 package jolt;
 
 import h3d.Vector4;
-import haxe.Int64;
-
-abstract Address(Int64) from Int64 {
-	public var value(get,never) : Int64;
-
-	public inline function new( v : Int64 ) {
-		this = v;
-	}
-
-	inline function get_value() return this;
-
-	public inline function offset( delta : Int ) : Address {
-		return cast this + delta;
-	}
-}
 
 @:hlNative("jolt", "body_interface_")
 abstract BodyInterface(hl.Abstract<"BodyInterface">) {
@@ -27,6 +12,9 @@ abstract BodyInterface(hl.Abstract<"BodyInterface">) {
     public function activateBody(bodyID:Int):Void {}
     public function deactivateBody(bodyID:Int):Void {}
     public function isActive(bodyID:Int):Bool return false;
+
+    public function getShape(bodyID:Int):ShapeRef return null;
+    public function setShape(bodyID:Int, shape:ShapeRef, recalcMass:Bool, activate:Bool):Void {}
 
     public function setPosition(bodyID:Int, pos:Vector4, activate:Bool):Void {}
     public function getPosition(bodyID:Int):Vector4 return null;

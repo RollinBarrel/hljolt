@@ -16,12 +16,17 @@ abstract BodyInterface(hl.Abstract<"BodyInterface">) {
     public function getShape(bodyID:Int):ShapeRef return null;
     public function setShape(bodyID:Int, shape:ShapeRef, recalcMass:Bool, activate:Bool):Void {}
 
+    public function setObjectLayer(bodyID:Int, layer:Int):Void {}
+    public function getObjectLayer(bodyID:Int):Int return -1;
+
     public function setPosition(bodyID:Int, pos:Vector4, activate:Bool):Void {}
     public function getPosition(bodyID:Int):Vector4 return null;
     public function getCenterOfMassPosition(bodyID:Int):Vector4 return null;
 
     public function setRotation(bodyID:Int, rot:Vector4, activate:Bool):Void {}
     public function getRotation(bodyID:Int):Vector4 return null;
+
+    public function moveKinematic(bodyID:Int, targetPos:Vector4, targetRot:Vector4, dt:Float) {}
 
     public function setLinearVelocity(bodyID:Int, vel:Vector4):Void {}
     public function getLinearVelocity(bodyID:Int):Vector4 return null;

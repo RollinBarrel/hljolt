@@ -20,5 +20,14 @@ abstract JoltInstance(hl.Abstract<"JoltInstance">) {
     public function getNarrowPhaseQuery(callback:NarrowPhaseQuery->Void):Void {}
     public function getNarrowPhaseQueryNoLock(callback:NarrowPhaseQuery->Void):Void {}
     public function getBodyLockInterface(callback:BodyLockInterface->Void):Void {}
+    
+    public inline function addConstraint(constraint:Constraint) @:privateAccess _addConstraint(constraint.ref);
+    public inline function removeConstraint(constraint:Constraint) @:privateAccess _removeConstraint(constraint.ref);
+
+    @:hlNative("jolt", "instance_add_constraint") function _addConstraint(ref:ConstraintRef) {}
+    @:hlNative("jolt", "instance_remove_constraint") function _removeConstraint(ref:ConstraintRef) {}
+
     public function update(dt:Float, collisionSteps:Int):Int return -1;
+    public function saveState(stateRecorder:StateRecorder, recordStateFlags:StateRecorderState, shouldSaveBody:(body1:Int, body2:Int)->Bool):Void {}
+    public function restoreState(stateRecorder:StateRecorder):Void {}
 }

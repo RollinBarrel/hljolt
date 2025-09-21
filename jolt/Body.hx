@@ -9,4 +9,6 @@ abstract Body(hl.Abstract<"Body">) {
     public function getShape():ShapeRef return null;
     public function getMotionProperties():MotionProperties return null;
     public function getWorldSpaceSurfaceNormal(subShapeID:Int, pos:Vector4):Vector4 return null;
+    public function saveState(state:StateRecorder) {}
+    public function restoreState(state:StateRecorder) {}
 }

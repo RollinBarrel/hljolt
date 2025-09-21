@@ -8,6 +8,7 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
+#include <Jolt/Physics/StateRecorderImpl.h>
 
 #include <Jolt/Physics/Collision/ObjectLayer.h>
 #include <Jolt/Physics/Collision/RayCast.h>
@@ -23,8 +24,11 @@
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Body/BodyLockMulti.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
 #include <Jolt/Physics/Body/BodyActivationListener.h>
+#include <Jolt/Physics/Constraints/DistanceConstraint.h>
+#include <Jolt/Physics/Constraints/SliderConstraint.h>
 
 #include <cstdint>
 #include <cstring>
@@ -33,6 +37,7 @@ using namespace JPH;
 using namespace literals;
 
 #define JOLTINST _ABSTRACT(JoltInstance)
+#define STATEREC _ABSTRACT(_StateRecorder)
 #define BODYLOCKIF _ABSTRACT(BodyLockInterface)
 #define BODYIF _ABSTRACT(BodyInterface)
 #define NARROWQUERY _ABSTRACT(NarrowPhaseQuery)
@@ -47,6 +52,9 @@ using namespace literals;
 #define COLSHAPERES _ABSTRACT(CollideShapeResult)
 #define CONTACTMANIFOLD _ABSTRACT(ContactManifold)
 #define CONTACTSETTINGS _ABSTRACT(ContactSettings)
+#define CONSTRAINT _ABSTRACT(_ConstraintRef)
+#define DISTANCECONSTRAINTSETTINGS _ABSTRACT(DistanceConstraintSettings)
+#define SLIDERCONSTRAINTSETTINGS _ABSTRACT(SliderConstraintSettings)
 
 typedef struct __ShapeRef _ShapeRef;
 struct __ShapeRef {
@@ -55,6 +63,24 @@ struct __ShapeRef {
 };
 void finalize_shape_ref(_ShapeRef* ref) {
     ref->ref->Release();
+}
+
+typedef struct __ConstraintRef _ConstraintRef;
+struct __ConstraintRef {
+    void (*finalise)(_ConstraintRef*);
+    Constraint* ref;
+};
+void finalize_constraint_ref(_ConstraintRef* ref) {
+    ref->ref->Release();
+}
+
+typedef struct __StateRecorder _StateRecorder;
+struct __StateRecorder {
+    void (*finalise)(_StateRecorder*);
+    StateRecorderImpl* ref;
+};
+void finalize_stateRecorder(_StateRecorder* ref) {
+    delete ref->ref;
 }
 
 class BPLayerInterfaceImpl final : public BroadPhaseLayerInterface {
@@ -344,6 +370,56 @@ public:
 	}
 };
 
+class StateRecorderFilterHL : public StateRecorderFilter {
+public:
+	vclosure* shouldSaveBody;
+	vclosure* shouldSaveConstraint;
+	vclosure* shouldSaveContact;
+	vclosure* shouldRestoreContact;
+
+	bool ShouldSaveBody(const Body &inBody) const override {
+		if (!shouldSaveBody)
+			return true;
+
+		int id = inBody.GetID().GetIndexAndSequenceNumber();
+
+		bool res;
+		hl_blocking(false);
+        if(shouldSaveBody->hasValue) {
+            res = ((bool(*)(void*, int))shouldSaveBody->fun)(shouldSaveBody->value, id);
+        } else {
+            res = ((bool(*)(int))shouldSaveBody->fun)(id);
+        }
+		hl_blocking(true);
+		return res;
+	}
+
+	bool ShouldSaveConstraint(const Constraint &inConstraint) const override {
+		if (!shouldSaveConstraint)
+			return true;
+
+		// TODO
+		return false;
+	}
+
+	bool ShouldSaveContact(const BodyID &inBody1, const BodyID &inBody2) const override {
+		if (!shouldSaveContact)
+			return true;
+
+		// TODO
+		return false;
+	}
+
+	bool ShouldRestoreContact(const BodyID &inBody1, const BodyID &inBody2) const override {
+		if (!shouldRestoreContact)
+			return true;
+
+		// TODO
+		return false;
+	}
+};
+
+
 HL_PRIM void HL_NAME(initialize)() {
     RegisterDefaultAllocator();
 
@@ -364,7 +440,7 @@ HL_PRIM void HL_NAME(uninitialize)() {
 DEFINE_PRIM(_VOID, uninitialize, _NO_ARG);
 
 HL_PRIM _JoltInstance* HL_NAME(instance_create)() {
-	 _JoltInstance* jolt = (_JoltInstance*)hl_gc_alloc_finalizer(sizeof(_JoltInstance));
+	_JoltInstance* jolt = (_JoltInstance*)hl_gc_alloc_finalizer(sizeof(_JoltInstance));
     jolt->finalise = finalize_jolt_instance;
     jolt->jolt = new JoltInstance();
     jolt->jolt->wrapper = jolt;
@@ -564,6 +640,61 @@ HL_PRIM int HL_NAME(instance_update)(_JoltInstance* jolt, double inDeltaTime, in
 }
 DEFINE_PRIM(_I32, instance_update, JOLTINST _F64 _I32);
 
+HL_PRIM void HL_NAME(instance_add_constraint)(_JoltInstance* jolt, _ConstraintRef* ref) {
+	hl_blocking(true);
+	jolt->jolt->physics_system.AddConstraint(ref->ref);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, instance_add_constraint, JOLTINST CONSTRAINT);
+
+HL_PRIM void HL_NAME(instance_remove_constraint)(_JoltInstance* jolt, _ConstraintRef* ref) {
+	hl_blocking(true);
+	jolt->jolt->physics_system.RemoveConstraint(ref->ref);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, instance_remove_constraint, JOLTINST CONSTRAINT);
+
+HL_PRIM void HL_NAME(instance_save_state)(_JoltInstance* jolt, _StateRecorder* ref, int recordStateFlags,  vclosure* shouldSaveBodyCallback) {
+	StateRecorderFilterHL stateRecorderFilter = {};
+	if (shouldSaveBodyCallback) {
+		stateRecorderFilter.shouldSaveBody = shouldSaveBodyCallback;
+	}
+	// TODO: more filters
+
+	hl_blocking(true);
+	jolt->jolt->physics_system.SaveState(*ref->ref, (EStateRecorderState)recordStateFlags, &stateRecorderFilter);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, instance_save_state, JOLTINST STATEREC _I32 _FUN(_BOOL, _I32 _I32));
+
+HL_PRIM void HL_NAME(instance_restore_state)(_JoltInstance* jolt, _StateRecorder* ref) {
+	StateRecorderFilterHL stateRecorderFilter = {};
+	// TODO: filter
+
+	hl_blocking(true);
+	jolt->jolt->physics_system.RestoreState(*ref->ref, &stateRecorderFilter);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, instance_restore_state, JOLTINST STATEREC);
+
+HL_PRIM _StateRecorder* HL_NAME(state_recorder_create)() {
+	_StateRecorder* ref = (_StateRecorder*)hl_gc_alloc_finalizer(sizeof(_StateRecorder));
+	ref->finalise = finalize_stateRecorder;
+	ref->ref = new StateRecorderImpl();
+	return ref;
+}
+DEFINE_PRIM(STATEREC, state_recorder_create, _NO_ARG);
+
+HL_PRIM void HL_NAME(state_recorder_rewind)(_StateRecorder* ref) {
+	ref->ref->Rewind();
+}
+DEFINE_PRIM(_VOID, state_recorder_rewind, STATEREC);
+
+HL_PRIM void HL_NAME(state_recorder_clear)(_StateRecorder* ref) {
+	ref->ref->Clear();
+}
+DEFINE_PRIM(_VOID, state_recorder_clear, STATEREC);
+
 HL_PRIM _ShapeRef* HL_NAME(box_shape_create)(DVec3* inHalfExtent, double inConvexRadius, PhysicsMaterial* inMaterial) {
 	// Jolt does refcounts on this and will release it when there's no references
 	BoxShapeSettings* settings = new BoxShapeSettings(inHalfExtent->ToVec3RoundDown(), (float)inConvexRadius, inMaterial);
@@ -633,7 +764,9 @@ HL_PRIM _ShapeRef* HL_NAME(convex_hull_shape_create)(varray* inPoints, double in
 DEFINE_PRIM(SHAPE, convex_hull_shape_create, _ARR _F64 PHYSMAT);
 
 HL_PRIM StaticCompoundShapeSettings* HL_NAME(static_compound_shape_settings_alloc)() {
-	return new StaticCompoundShapeSettings();
+	StaticCompoundShapeSettings* d = (StaticCompoundShapeSettings*)hl_gc_alloc_noptr(sizeof(StaticCompoundShapeSettings));
+	new (d) StaticCompoundShapeSettings();
+	return d;
 }
 DEFINE_PRIM(STATICCOMPOUNDSHAPESETTINGS, static_compound_shape_settings_alloc, _NO_ARG);
 
@@ -708,6 +841,21 @@ HL_PRIM void HL_NAME(body_creation_settings_set_allowed_dofs)(BodyCreationSettin
 }
 DEFINE_PRIM(_VOID, body_creation_settings_set_allowed_dofs, BODYCREATIONSETTINGS _I32);
 
+HL_PRIM void HL_NAME(body_creation_settings_set_enhanced_internal_edge_removal)(BodyCreationSettings* settings, bool enable) {
+	settings->mEnhancedInternalEdgeRemoval = enable;
+}
+DEFINE_PRIM(_VOID, body_creation_settings_set_enhanced_internal_edge_removal, BODYCREATIONSETTINGS _BOOL);
+
+HL_PRIM void HL_NAME(body_creation_settings_set_allow_sleeping)(BodyCreationSettings* settings, bool toggle) {
+	settings->mAllowSleeping = toggle;
+}
+DEFINE_PRIM(_VOID, body_creation_settings_set_allow_sleeping, BODYCREATIONSETTINGS _BOOL);
+
+HL_PRIM void HL_NAME(body_creation_settings_set_is_sensor)(BodyCreationSettings* settings, bool isSensor) {
+	settings->mIsSensor = isSensor;
+}
+DEFINE_PRIM(_VOID, body_creation_settings_set_is_sensor, BODYCREATIONSETTINGS _BOOL);
+
 HL_PRIM void HL_NAME(body_lock_interface_lock_write)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
 	hl_blocking(true);
 	BodyLockWrite lock(*body_lock_interface, BodyID(bodyID));
@@ -741,6 +889,60 @@ HL_PRIM void HL_NAME(body_lock_interface_lock_read)(BodyLockInterface* body_lock
 	}
 }
 DEFINE_PRIM(_VOID, body_lock_interface_lock_read, BODYLOCKIF _I32 _FUN(_VOID, BODY));
+
+HL_PRIM void HL_NAME(body_lock_interface_lock_multi_write)(BodyLockInterface* body_lock_interface, varray* bodyIDs, vclosure* callback) {
+	int size = bodyIDs->size;
+	uint32* intIDs = hl_aptr(bodyIDs, uint32);
+
+	BodyID* ids = new BodyID[size]();
+	for(int i = 0; i < size; ++i) {
+		ids[i] = BodyID(intIDs[i]);
+	}
+
+	hl_blocking(true);
+	BodyLockMultiWrite lock(*body_lock_interface, ids, size);
+	hl_blocking(false);
+	
+	varray* bodies = hl_alloc_array(&hlt_dynobj, size);
+	const Body** arr = hl_aptr(bodies, const Body*);
+	for (int i = 0; i < size; ++i) {
+		arr[i] = lock.GetBody(i);
+	}
+	
+	if(callback->hasValue) {
+		((void(*)(void*, varray*))callback->fun)(callback->value, bodies);
+	} else {
+		((void(*)(varray*))callback->fun)(bodies);
+	}
+}
+DEFINE_PRIM(_VOID, body_lock_interface_lock_multi_write, BODYLOCKIF _ARR _FUN(_VOID, _ARR));
+
+HL_PRIM void HL_NAME(body_lock_interface_lock_multi_read)(BodyLockInterface* body_lock_interface, varray* bodyIDs, vclosure* callback) {
+	int size = bodyIDs->size;
+	uint32* intIDs = hl_aptr(bodyIDs, uint32);
+
+	BodyID* ids = new BodyID[size]();
+	for(int i = 0; i < size; ++i) {
+		ids[i] = BodyID(intIDs[i]);
+	}
+
+	hl_blocking(true);
+	BodyLockMultiRead lock(*body_lock_interface, ids, size);
+	hl_blocking(false);
+	
+	varray* bodies = hl_alloc_array(&hlt_dynobj, size);
+	const Body** arr = hl_aptr(bodies, const Body*);
+	for (int i = 0; i < size; ++i) {
+		arr[i] = lock.GetBody(i);
+	}
+	
+	if(callback->hasValue) {
+		((void(*)(void*, varray*))callback->fun)(callback->value, bodies);
+	} else {
+		((void(*)(varray*))callback->fun)(bodies);
+	}
+}
+DEFINE_PRIM(_VOID, body_lock_interface_lock_multi_read, BODYLOCKIF _ARR _FUN(_VOID, _ARR));
 
 HL_PRIM int HL_NAME(body_interface_create_body)(BodyInterface* body_interface, BodyCreationSettings* settings) {
 	hl_blocking(true);
@@ -826,6 +1028,20 @@ HL_PRIM void HL_NAME(body_interface_set_shape)(BodyInterface* body_interface, ui
 }
 DEFINE_PRIM(_VOID, body_interface_set_shape, BODYIF _I32 SHAPE _BOOL _BOOL);
 
+HL_PRIM void HL_NAME(body_interface_set_object_layer)(BodyInterface* body_interface, uint32 bodyID, int inLayer) {
+	hl_blocking(true);
+	body_interface->SetObjectLayer(BodyID(bodyID), ObjectLayer(inLayer));
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, body_interface_set_object_layer, BODYIF _I32 _I32);
+
+HL_PRIM int HL_NAME(body_interface_get_object_layer)(BodyInterface* body_interface, uint32 bodyID) {
+	hl_blocking(true);
+	return body_interface->GetObjectLayer(BodyID(bodyID));
+	hl_blocking(false);
+}
+DEFINE_PRIM(_I32, body_interface_get_object_layer, BODYIF _I32);
+
 HL_PRIM DVec3* HL_NAME(body_interface_get_position)(BodyInterface* body_interface, uint32 bodyID) {
 	hl_blocking(true);
 	RVec3 r = body_interface->GetPosition(BodyID(bodyID));
@@ -870,6 +1086,18 @@ HL_PRIM DVec3* HL_NAME(body_interface_get_rotation)(BodyInterface* body_interfac
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_interface_get_rotation, BODYIF _I32);
+
+HL_PRIM void HL_NAME(body_interface_move_kinematic)(BodyInterface* body_interface, uint32 bodyID, DVec3* inTargetPosition, DVec3* inTargetRotation, double inDeltaTime) {
+	hl_blocking(true);
+	body_interface->MoveKinematic(
+		BodyID(bodyID),
+		RVec3(inTargetPosition->mF64[0], inTargetPosition->mF64[1], inTargetPosition->mF64[2]),
+		QuatArg(inTargetRotation->mF64[0], inTargetRotation->mF64[1], inTargetRotation->mF64[2], inTargetRotation->mF64[3]),
+		inDeltaTime
+	);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, body_interface_move_kinematic, BODYIF _I32 _STRUCT _STRUCT _F64);
 
 HL_PRIM void HL_NAME(body_interface_set_linear_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inLinearVelocity) {
 	hl_blocking(true);
@@ -1237,6 +1465,16 @@ HL_PRIM DVec3* HL_NAME(body_get_world_space_surface_normal)(Body* body, int inSu
 }
 DEFINE_PRIM(_STRUCT, body_get_world_space_surface_normal, BODY _I32 _STRUCT);
 
+HL_PRIM void HL_NAME(body_save_state)(Body* body, _StateRecorder* stateRec) {
+	body->SaveState(*stateRec->ref);
+}
+DEFINE_PRIM(_VOID, body_save_state, BODY STATEREC);
+
+HL_PRIM void HL_NAME(body_restore_state)(Body* body, _StateRecorder* stateRec) {
+	body->RestoreState(*stateRec->ref);
+}
+DEFINE_PRIM(_VOID, body_restore_state, BODY STATEREC);
+
 HL_PRIM double HL_NAME(motion_properties_get_inverse_mass)(MotionProperties* motion_properties) {
 	return motion_properties->GetInverseMass();
 }
@@ -1272,6 +1510,22 @@ HL_PRIM int HL_NAME(shape_get_sub_type)(_ShapeRef* shape) {
 }
 DEFINE_PRIM(_I32, shape_get_sub_type, SHAPE);
 
+HL_PRIM RayCastResult* HL_NAME(shape_cast_ray)(_ShapeRef* shape, DVec3* origin, DVec3* direction) {
+	RayCast ray;
+	ray.mOrigin = Vec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
+	ray.mDirection = Vec3(direction->mF64[0], direction->mF64[1], direction->mF64[2]);
+
+	SubShapeIDCreator subShapeIDCreator = {};
+	
+	RayCastResult* hit = (RayCastResult*)hl_gc_alloc_noptr(sizeof(RayCastResult));
+	hit->Reset();
+	
+	shape->ref->CastRay(ray, subShapeIDCreator, *hit);
+
+	return hit;
+}
+DEFINE_PRIM(_STRUCT, shape_cast_ray, SHAPE _STRUCT _STRUCT);
+
 HL_PRIM _ShapeRef* HL_NAME(shape_scale)(_ShapeRef* shape, DVec3* inScale) {
 	Shape::ShapeResult scaled = shape->ref->ScaleShape(Vec3Arg(inScale->mF64[0], inScale->mF64[1], inScale->mF64[2]));
 	// JPH_ASSERT(scaled.IsValid());
@@ -1298,3 +1552,124 @@ HL_PRIM _ShapeRef* HL_NAME(shape_scaled_get_inner_shape)(_ShapeRef* shape) {
     return ref;
 }
 DEFINE_PRIM(SHAPE, shape_scaled_get_inner_shape, SHAPE);
+
+HL_PRIM DistanceConstraintSettings* HL_NAME(distance_constraint_settings_alloc)() {
+	DistanceConstraintSettings* d = (DistanceConstraintSettings*)hl_gc_alloc_noptr(sizeof(DistanceConstraintSettings));
+	new (d) DistanceConstraintSettings();
+	return d;
+}
+DEFINE_PRIM(DISTANCECONSTRAINTSETTINGS, distance_constraint_settings_alloc, _NO_ARG);
+
+HL_PRIM void HL_NAME(distance_constraint_settings_set_point1)(DistanceConstraintSettings* constraint, DVec3* pos) {
+	constraint->mPoint1.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+}
+DEFINE_PRIM(_VOID, distance_constraint_settings_set_point1, DISTANCECONSTRAINTSETTINGS _STRUCT);
+
+HL_PRIM void HL_NAME(distance_constraint_settings_set_point2)(DistanceConstraintSettings* constraint, DVec3* pos) {
+	constraint->mPoint2.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+}
+DEFINE_PRIM(_VOID, distance_constraint_settings_set_point2, DISTANCECONSTRAINTSETTINGS _STRUCT);
+
+HL_PRIM _ConstraintRef* HL_NAME(distance_constraint_settings_create)(DistanceConstraintSettings* constraint, Body* inBody1, Body* inBody2) {
+	Constraint* r = constraint->Create(*inBody1, *inBody2);
+	r->AddRef();
+
+	_ConstraintRef* ref = (_ConstraintRef*)hl_gc_alloc_finalizer(sizeof(_ConstraintRef));
+    ref->finalise = finalize_constraint_ref;
+    ref->ref = r;
+    return ref;
+}
+DEFINE_PRIM(CONSTRAINT, distance_constraint_settings_create, DISTANCECONSTRAINTSETTINGS BODY BODY);
+
+HL_PRIM SliderConstraintSettings* HL_NAME(slider_constraint_settings_alloc)() {
+	SliderConstraintSettings* d = (SliderConstraintSettings*)hl_gc_alloc_noptr(sizeof(SliderConstraintSettings));
+	new (d) SliderConstraintSettings();
+	return d;
+}
+DEFINE_PRIM(SLIDERCONSTRAINTSETTINGS, slider_constraint_settings_alloc, _NO_ARG);
+
+HL_PRIM void HL_NAME(slider_constraint_settings_set_slider_axis)(SliderConstraintSettings* constraint, DVec3* axis) {
+	constraint->SetSliderAxis(Vec3Arg(axis->mF64[0], axis->mF64[1], axis->mF64[2]));
+}
+DEFINE_PRIM(_VOID, slider_constraint_settings_set_slider_axis, SLIDERCONSTRAINTSETTINGS _STRUCT);
+
+HL_PRIM void HL_NAME(slider_constraint_settings_set_auto_detect_point)(SliderConstraintSettings* constraint, bool toggle) {
+	constraint->mAutoDetectPoint = toggle;
+}
+DEFINE_PRIM(_VOID, slider_constraint_settings_set_auto_detect_point, SLIDERCONSTRAINTSETTINGS _BOOL);
+
+HL_PRIM void HL_NAME(slider_constraint_settings_set_point1)(SliderConstraintSettings* constraint, DVec3* pos) {
+	constraint->mPoint1.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+}
+DEFINE_PRIM(_VOID, slider_constraint_settings_set_point1, SLIDERCONSTRAINTSETTINGS _STRUCT);
+
+HL_PRIM void HL_NAME(slider_constraint_settings_set_point2)(SliderConstraintSettings* constraint, DVec3* pos) {
+	constraint->mPoint2.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+}
+DEFINE_PRIM(_VOID, slider_constraint_settings_set_point2, SLIDERCONSTRAINTSETTINGS _STRUCT);
+
+HL_PRIM _ConstraintRef* HL_NAME(slider_constraint_settings_create)(SliderConstraintSettings* constraint, Body* inBody1, Body* inBody2) {
+	Constraint* r = constraint->Create(*inBody1, *inBody2);
+	r->AddRef();
+
+	_ConstraintRef* ref = (_ConstraintRef*)hl_gc_alloc_finalizer(sizeof(_ConstraintRef));
+    ref->finalise = finalize_constraint_ref;
+    ref->ref = r;
+    return ref;
+}
+DEFINE_PRIM(CONSTRAINT, slider_constraint_settings_create, SLIDERCONSTRAINTSETTINGS BODY BODY);
+
+HL_PRIM void HL_NAME(constraint_set_enabled)(_ConstraintRef* ref, bool toggle) {
+	ref->ref->SetEnabled(toggle);
+}
+DEFINE_PRIM(_VOID, constraint_set_enabled, CONSTRAINT _BOOL);
+
+HL_PRIM void HL_NAME(constraint_notify_shape_changed)(_ConstraintRef* ref, int bodyID, DVec3* deltaCOM) {
+	ref->ref->NotifyShapeChanged(BodyID(bodyID), Vec3Arg(deltaCOM->mF64[0], deltaCOM->mF64[1], deltaCOM->mF64[2]));
+}
+DEFINE_PRIM(_VOID, constraint_notify_shape_changed, CONSTRAINT _I32 _STRUCT);
+
+HL_PRIM void HL_NAME(constraint_distance_set_distance)(_ConstraintRef* ref, double min, double max) {
+	((DistanceConstraint*)ref->ref)->SetDistance(min, max);
+}
+DEFINE_PRIM(_VOID, constraint_distance_set_distance, CONSTRAINT _F64 _F64);
+
+HL_PRIM SpringSettings* HL_NAME(constraint_distance_get_limits_spring_settings)(_ConstraintRef* ref) {
+	return &((DistanceConstraint*)ref->ref)->GetLimitsSpringSettings();
+}
+DEFINE_PRIM(_STRUCT, constraint_distance_get_limits_spring_settings, CONSTRAINT);
+
+HL_PRIM double HL_NAME(constraint_slider_get_current_position)(_ConstraintRef* ref) {
+	return ((SliderConstraint*)ref->ref)->GetCurrentPosition();
+}
+DEFINE_PRIM(_F64, constraint_slider_get_current_position, CONSTRAINT);
+
+HL_PRIM void HL_NAME(constraint_slider_set_max_friction_force)(_ConstraintRef* ref, double friction) {
+	((SliderConstraint*)ref->ref)->SetMaxFrictionForce(friction);
+}
+DEFINE_PRIM(_VOID, constraint_slider_set_max_friction_force, CONSTRAINT _F64);
+
+HL_PRIM void HL_NAME(constraint_slider_get_motor_settings)(_ConstraintRef* ref) {
+	((SliderConstraint*)ref->ref)->GetMotorSettings();
+}
+DEFINE_PRIM(_STRUCT, constraint_slider_get_motor_settings, CONSTRAINT);
+
+HL_PRIM void HL_NAME(constraint_slider_set_motor_state)(_ConstraintRef* ref, int state) {
+	((SliderConstraint*)ref->ref)->SetMotorState((EMotorState)state);
+}
+DEFINE_PRIM(_VOID, constraint_slider_set_motor_state, CONSTRAINT _I32);
+
+HL_PRIM void HL_NAME(constraint_slider_set_target_velocity)(_ConstraintRef* ref, double velocity) {
+	((SliderConstraint*)ref->ref)->SetTargetVelocity(velocity);
+}
+DEFINE_PRIM(_VOID, constraint_slider_set_target_velocity, CONSTRAINT _F64);
+
+HL_PRIM void HL_NAME(constraint_slider_set_target_position)(_ConstraintRef* ref, double position) {
+	((SliderConstraint*)ref->ref)->SetTargetPosition(position);
+}
+DEFINE_PRIM(_VOID, constraint_slider_set_target_position, CONSTRAINT _F64);
+
+HL_PRIM void HL_NAME(constraint_slider_set_limits)(_ConstraintRef* ref, double min, double max) {
+	((SliderConstraint*)ref->ref)->SetLimits(min, max);
+}
+DEFINE_PRIM(_VOID, constraint_slider_set_limits, CONSTRAINT _F64 _F64);

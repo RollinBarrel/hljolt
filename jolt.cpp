@@ -16,12 +16,14 @@
 #include "Jolt/Physics/Collision/CollisionCollectorImpl.h"
 #include <Jolt/Physics/Collision/CastResult.h>
 #include "Jolt/Physics/Collision/NarrowPhaseQuery.h"
+#include <Jolt/Physics/Collision/PhysicsMaterial.h>
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseLayer.h"
 #include <Jolt/Physics/Collision/Shape/BoxShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
 #include <Jolt/Physics/Collision/Shape/ConvexHullShape.h>
 #include <Jolt/Physics/Collision/Shape/StaticCompoundShape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
 #include <Jolt/Physics/Collision/Shape/ScaledShape.h>
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Body/BodyLockMulti.h>
@@ -790,6 +792,59 @@ HL_PRIM _ShapeRef* HL_NAME(static_compound_shape_settings_create)(StaticCompound
     return ref;
 }
 DEFINE_PRIM(SHAPE, static_compound_shape_settings_create, STATICCOMPOUNDSHAPESETTINGS);
+
+HL_PRIM _ShapeRef* HL_NAME(mesh_shape_create)(varray* inPoints, varray* inMaterials) {
+	float* pts = hl_aptr(inPoints, float);
+	int size = inPoints->size;
+	
+	int vecCount = size / 3;
+	int triCount = vecCount / 3;
+
+	TriangleList triangles(triCount);
+	
+	int pos = 0;
+	for (int i = 0; i < triCount; i++) {
+		float ax = pts[pos++];
+		float ay = pts[pos++];
+		float az = pts[pos++];
+
+		float bx = pts[pos++];
+		float by = pts[pos++];
+		float bz = pts[pos++];
+
+		float cx = pts[pos++];
+		float cy = pts[pos++];
+		float cz = pts[pos++];
+		
+		Vec3 a(ax, ay, az);
+		Vec3 b(bx, by, bz);
+		Vec3 c(cx, cy, cz);
+
+		triangles[i] = Triangle(a, b, c);
+	}
+
+	PhysicsMaterial** mats;
+	int matsCount = 0;
+	if (inMaterials != NULL) {
+		mats = hl_aptr(inMaterials, PhysicsMaterial*);
+		matsCount = inMaterials->size;
+	}
+
+	PhysicsMaterialList materials(matsCount);
+	for (int i = 0; i < matsCount; i++)
+		materials[i] = mats[i];
+
+	MeshShapeSettings* settings = new MeshShapeSettings(triangles, materials);
+
+	Shape* r = settings->Create().Get().GetPtr();
+	r->AddRef();
+
+	_ShapeRef* ref = (_ShapeRef*)hl_gc_alloc_finalizer(sizeof(_ShapeRef));
+    ref->finalise = finalize_shape_ref;
+    ref->ref = r;
+    return ref;
+}
+DEFINE_PRIM(SHAPE, mesh_shape_create, _ARR _ARR);
 
 HL_PRIM _ShapeRef* HL_NAME(scaled_shape_create)(_ShapeRef* inShape, DVec3* inScale) {
 	ScaledShapeSettings* settings = new ScaledShapeSettings(

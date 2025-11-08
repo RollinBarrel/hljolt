@@ -1274,8 +1274,11 @@ HL_PRIM void* HL_NAME(body_interface_get_user_data)(BodyInterface* body_interfac
 }
 DEFINE_PRIM(_DYN, body_interface_get_user_data, BODYIF _I32);
 
-// TODO: also expose variant that supports multiple hits
-HL_PRIM RayCastResult* HL_NAME(narrow_phase_query_cast_ray)(NarrowPhaseQuery* narrow_phase_query, DVec3* origin, DVec3* direction, vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback) {
+HL_PRIM RayCastResult* HL_NAME(narrow_phase_query_cast_ray_closest)(
+	NarrowPhaseQuery* narrow_phase_query, DVec3* origin, DVec3* direction,
+	vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback,
+	bool collideWithBackFacesTriangles, bool collideWithBackFacesConvex, bool treatConvexAsSolid
+) {
 	RRayCast ray;
 	ray.mOrigin = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
 	ray.mDirection = Vec3(direction->mF64[0], direction->mF64[1], direction->mF64[2]);
@@ -1304,7 +1307,70 @@ HL_PRIM RayCastResult* HL_NAME(narrow_phase_query_cast_ray)(NarrowPhaseQuery* na
 
 	return hit;
 }
-DEFINE_PRIM(_STRUCT, narrow_phase_query_cast_ray, NARROWQUERY _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32));
+DEFINE_PRIM(_STRUCT, narrow_phase_query_cast_ray_closest, NARROWQUERY _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32));
+
+HL_PRIM void HL_NAME(narrow_phase_query_cast_ray)(
+	NarrowPhaseQuery* narrow_phase_query, DVec3* origin, DVec3* direction,
+	vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback,
+	bool collideWithBackFacesTriangles, bool collideWithBackFacesConvex, bool treatConvexAsSolid,
+	vclosure* callback
+) {
+	RRayCast ray;
+	ray.mOrigin = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
+	ray.mDirection = Vec3(direction->mF64[0], direction->mF64[1], direction->mF64[2]);
+
+	BroadPhaseLayerFilterHL broadPhaseLayerFilter = {};
+	if (broadPhaseLayerFilterCallback) {
+		broadPhaseLayerFilter.shouldCollide = broadPhaseLayerFilterCallback;
+	}
+
+	ObjectLayerFilterHL objectLayerFilter = {};
+	if (objectLayerFilterCallback) {
+		objectLayerFilter.shouldCollide = objectLayerFilterCallback;
+	}
+
+	BodyFilterHL bodyFilter = {};
+	if (bodyFilterCallback) {
+		bodyFilter.shouldCollide = bodyFilterCallback;
+	}
+
+	RayCastSettings settings = {};
+	settings.mBackFaceModeTriangles = collideWithBackFacesTriangles ? EBackFaceMode::CollideWithBackFaces : EBackFaceMode::IgnoreBackFaces;
+	settings.mBackFaceModeConvex = collideWithBackFacesConvex ? EBackFaceMode::CollideWithBackFaces : EBackFaceMode::IgnoreBackFaces;
+	settings.mTreatConvexAsSolid = treatConvexAsSolid;
+
+	AllHitCollisionCollector<CastRayCollector> collector = {};
+
+	hl_blocking(true);
+	narrow_phase_query->CastRay(
+		ray,
+		settings,
+		collector,
+		broadPhaseLayerFilter,
+		objectLayerFilter,
+		bodyFilter
+		// shapeFilter
+	);
+	hl_blocking(false);
+
+	varray* hits;
+	if (collector.HadHit()) {
+		hits = hl_alloc_array(&hlt_dynobj, collector.mHits.size());
+		RayCastResult** arr = hl_aptr(hits, RayCastResult*);
+		for (unsigned int i = 0; i < collector.mHits.size(); ++i){
+			arr[i] = &collector.mHits[i];
+		}
+	} else {
+		hits = nullptr;
+	}
+
+	if (callback->hasValue) {
+		((void(*)(void*, varray*))callback->fun)(callback->value, hits);
+	} else {
+		((void(*)(varray*))callback->fun)(hits);
+	}
+}
+DEFINE_PRIM(_VOID, narrow_phase_query_cast_ray, NARROWQUERY _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _BOOL _BOOL _BOOL _FUN(_VOID, _ARR));
 
 HL_PRIM void HL_NAME(narrow_phase_query_cast_shape)(NarrowPhaseQuery* narrow_phase_query, _ShapeRef* shape, DVec3* origin, DVec3* rotation, DVec3* direction, vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback, vclosure* callback) {
 	RVec3 pos = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);

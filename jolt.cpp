@@ -896,6 +896,11 @@ HL_PRIM void HL_NAME(body_creation_settings_set_allowed_dofs)(BodyCreationSettin
 }
 DEFINE_PRIM(_VOID, body_creation_settings_set_allowed_dofs, BODYCREATIONSETTINGS _I32);
 
+HL_PRIM void HL_NAME(body_creation_settings_set_allow_dynamic_or_kinematic)(BodyCreationSettings* settings, bool enable) {
+	settings->mAllowDynamicOrKinematic = enable;
+}
+DEFINE_PRIM(_VOID, body_creation_settings_set_allow_dynamic_or_kinematic, BODYCREATIONSETTINGS _BOOL);
+
 HL_PRIM void HL_NAME(body_creation_settings_set_enhanced_internal_edge_removal)(BodyCreationSettings* settings, bool enable) {
 	settings->mEnhancedInternalEdgeRemoval = enable;
 }
@@ -1268,6 +1273,13 @@ HL_PRIM void HL_NAME(body_interface_add_angular_impulse)(BodyInterface* body_int
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_angular_impulse, BODYIF _I32 _STRUCT);
+
+HL_PRIM void HL_NAME(body_interface_set_motion_type)(BodyInterface* body_interface, uint32 bodyID, EMotionType inMotionType, bool activate) {
+	hl_blocking(true);
+	body_interface->SetMotionType(BodyID(bodyID), inMotionType, (EActivation)!activate);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, body_interface_set_motion_type, BODYIF _I32 _I32 _BOOL);
 
 HL_PRIM void HL_NAME(body_interface_set_restitution)(BodyInterface* body_interface, uint32 bodyID, double inRestitution) {
 	hl_blocking(true);

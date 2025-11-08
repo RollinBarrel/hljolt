@@ -41,6 +41,8 @@ abstract BodyInterface(hl.Abstract<"BodyInterface">) {
     public function addImpulseAtPosition(bodyID:Int, impulse:Vector4, pos:Vector4):Void {}
     public function addAngularImpulse(bodyID:Int, impulse:Vector4):Void {}
 
+    public function setMotionType(bodyID:Int, motionType:MotionType, activate:Bool) {}
+
     public function setRestitution(bodyID:Int, v:Float):Void {}
     public function getRestitution(bodyID:Int):Float return -1.;
     public function setFriction(bodyID:Int, v:Float):Void {}

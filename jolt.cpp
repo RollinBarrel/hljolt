@@ -14,6 +14,7 @@
 #include <Jolt/Physics/Collision/RayCast.h>
 #include "Jolt/Physics/Collision/ShapeCast.h"
 #include "Jolt/Physics/Collision/CollisionCollectorImpl.h"
+#include <Jolt/Physics/Collision/EstimateCollisionResponse.h>
 #include <Jolt/Physics/Collision/CastResult.h>
 #include "Jolt/Physics/Collision/NarrowPhaseQuery.h"
 #include <Jolt/Physics/Collision/PhysicsMaterial.h>
@@ -55,6 +56,7 @@ using namespace literals;
 #define COLSHAPERES _ABSTRACT(CollideShapeResult)
 #define CONTACTMANIFOLD _ABSTRACT(ContactManifold)
 #define CONTACTSETTINGS _ABSTRACT(ContactSettings)
+#define COLLISIONESTIMATE _ABSTRACT(CollisionEstimationResult)
 #define CONSTRAINT _ABSTRACT(_ConstraintRef)
 #define DISTANCECONSTRAINTSETTINGS _ABSTRACT(DistanceConstraintSettings)
 #define SLIDERCONSTRAINTSETTINGS _ABSTRACT(SliderConstraintSettings)
@@ -552,6 +554,11 @@ HL_PRIM DVec3* HL_NAME(contact_manifold_get_world_space_normal)(ContactManifold*
 }
 DEFINE_PRIM(_STRUCT, contact_manifold_get_world_space_normal, CONTACTMANIFOLD);
 
+HL_PRIM float HL_NAME(contact_manifold_get_penetration_depth)(ContactManifold* manifold) {
+    return manifold->mPenetrationDepth;
+}
+DEFINE_PRIM(_F32, contact_manifold_get_penetration_depth, CONTACTMANIFOLD);
+
 HL_PRIM void HL_NAME(contact_settings_set_combined_friction)(ContactSettings* settings, double friction) {
 	settings->mCombinedFriction = friction;
 }
@@ -561,6 +568,32 @@ HL_PRIM void HL_NAME(contact_settings_set_combined_restitution)(ContactSettings*
 	settings->mCombinedRestitution = restitution;
 }
 DEFINE_PRIM(_VOID, contact_settings_set_combined_restitution, CONTACTSETTINGS _F64);
+
+HL_PRIM CollisionEstimationResult* HL_NAME(collision_estimate_estimate)(Body* inBody1, Body* inBody2, ContactManifold* inManifold, float inCombinedFriction, float inCombinedRestitution, float inMinVelocityForRestitution, int inNumIterations) {
+	CollisionEstimationResult res;
+	EstimateCollisionResponse(*inBody1, *inBody2, *inManifold, res, inCombinedFriction, inCombinedRestitution, inMinVelocityForRestitution, inNumIterations);
+
+	CollisionEstimationResult* out = (CollisionEstimationResult*)hl_gc_alloc_noptr(sizeof(CollisionEstimationResult));
+	*out = res;
+	return out;
+}
+DEFINE_PRIM(COLLISIONESTIMATE, collision_estimate_estimate, BODY BODY CONTACTMANIFOLD _F32 _F32 _F32 _I32);
+
+HL_PRIM DVec3* HL_NAME(collision_estimate_get_linear_velocity1)(CollisionEstimationResult* estimation) {
+	Vec3 r = estimation->mLinearVelocity1;
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(r.GetX(), r.GetY(), r.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, collision_estimate_get_linear_velocity1, COLLISIONESTIMATE);
+
+HL_PRIM DVec3* HL_NAME(collision_estimate_get_linear_velocity2)(CollisionEstimationResult* estimation) {
+	Vec3 r = estimation->mLinearVelocity2;
+	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(r.GetX(), r.GetY(), r.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, collision_estimate_get_linear_velocity2, COLLISIONESTIMATE);
 
 HL_PRIM void HL_NAME(instance_get_body_lock_interface)(_JoltInstance* jolt, vclosure* callback) {
 	const BodyLockInterface& body_lock_interface = jolt->jolt->physics_system.GetBodyLockInterface();
@@ -922,6 +955,16 @@ HL_PRIM void HL_NAME(body_creation_settings_set_is_sensor)(BodyCreationSettings*
 	settings->mIsSensor = isSensor;
 }
 DEFINE_PRIM(_VOID, body_creation_settings_set_is_sensor, BODYCREATIONSETTINGS _BOOL);
+
+HL_PRIM void HL_NAME(body_creation_settings_set_override_mass_properties)(BodyCreationSettings* settings, int mode) {
+	settings->mOverrideMassProperties = (EOverrideMassProperties)mode;
+}
+DEFINE_PRIM(_VOID, body_creation_settings_set_override_mass_properties, BODYCREATIONSETTINGS _I32);
+
+HL_PRIM void HL_NAME(body_creation_settings_set_mass_properties_override_mass)(BodyCreationSettings* settings, double mass) {
+	settings->mMassPropertiesOverride.mMass = mass;
+}
+DEFINE_PRIM(_VOID, body_creation_settings_set_mass_properties_override_mass, BODYCREATIONSETTINGS _F64);
 
 HL_PRIM void HL_NAME(body_lock_interface_lock_write)(BodyLockInterface* body_lock_interface, uint32 bodyID, vclosure* callback) {
 	hl_blocking(true);
@@ -1288,6 +1331,13 @@ HL_PRIM void HL_NAME(body_interface_set_motion_type)(BodyInterface* body_interfa
 }
 DEFINE_PRIM(_VOID, body_interface_set_motion_type, BODYIF _I32 _I32 _BOOL);
 
+HL_PRIM void HL_NAME(body_interface_set_is_sensor)(BodyInterface* body_interface, uint32 bodyID, bool isSensor) {
+	hl_blocking(true);
+	body_interface->SetIsSensor(BodyID(bodyID), isSensor);
+	hl_blocking(false);
+}
+DEFINE_PRIM(_VOID, body_interface_set_is_sensor, BODYIF _I32 _BOOL);
+
 HL_PRIM void HL_NAME(body_interface_set_restitution)(BodyInterface* body_interface, uint32 bodyID, double inRestitution) {
 	hl_blocking(true);
 	body_interface->SetRestitution(BodyID(bodyID), (float)inRestitution);
@@ -1577,6 +1627,25 @@ HL_PRIM void HL_NAME(body_reset_torque)(Body* body) {
 }
 DEFINE_PRIM(_VOID, body_reset_torque, BODY);
 
+HL_PRIM int HL_NAME(body_get_id)(Body* body) {
+    return body->GetID().GetIndexAndSequenceNumber();
+}
+DEFINE_PRIM(_I32, body_get_id, BODY);
+
+HL_PRIM bool HL_NAME(body_is_sensor)(Body* body) {
+    return body->IsSensor();
+}
+DEFINE_PRIM(_BOOL, body_is_sensor, BODY);
+
+HL_PRIM DVec3* HL_NAME(body_get_linear_velocity)(Body* body) {
+	Vec3 r = body->GetLinearVelocity();
+
+    DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	d->Set(r.GetX(), r.GetY(), r.GetZ());
+    return d;
+}
+DEFINE_PRIM(_STRUCT, body_get_linear_velocity, BODY);
+
 HL_PRIM _ShapeRef* HL_NAME(body_get_shape)(Body* body) {
 	const Shape* r = body->GetShape();
 	r->AddRef();
@@ -1592,6 +1661,11 @@ HL_PRIM MotionProperties* HL_NAME(body_get_motion_properties)(Body* body) {
 	return body->GetMotionProperties();
 }
 DEFINE_PRIM(MOTIONPROPS, body_get_motion_properties, BODY);
+
+HL_PRIM void* HL_NAME(body_get_user_data)(Body* body) {
+	return (void*)body->GetUserData();
+}
+DEFINE_PRIM(_DYN, body_get_user_data, BODY);
 
 HL_PRIM DVec3* HL_NAME(body_get_world_space_surface_normal)(Body* body, int inSubShapeID, DVec3* inPosition) {
 	RVec3 pos = RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]);
@@ -1644,6 +1718,17 @@ HL_PRIM void HL_NAME(motion_properties_set_angular_damping)(MotionProperties* mo
 	motion_properties->SetAngularDamping(damping);
 }
 DEFINE_PRIM(_VOID, motion_properties_set_angular_damping, MOTIONPROPS _F64);
+
+HL_PRIM DVec3* HL_NAME(motion_properties_multiply_world_space_inverse_inertia_by_vector)(MotionProperties* motion_properties, DVec3* rotation, DVec3* vec) {
+	DVec3* r = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+	Vec3 res = motion_properties->MultiplyWorldSpaceInverseInertiaByVector(
+		QuatArg(rotation->mF64[0], rotation->mF64[1], rotation->mF64[2], rotation->mF64[3]),
+		Vec3(vec->mF64[0], vec->mF64[1], vec->mF64[2])
+	);
+	r->Set(res.GetX(), res.GetY(), res.GetZ());
+	return r;
+}
+DEFINE_PRIM(_STRUCT, motion_properties_multiply_world_space_inverse_inertia_by_vector, MOTIONPROPS _STRUCT _STRUCT);
 
 HL_PRIM int HL_NAME(shape_get_sub_type)(_ShapeRef* shape) {
 	return (int)shape->ref->GetSubType();

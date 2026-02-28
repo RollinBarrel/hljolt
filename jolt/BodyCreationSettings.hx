@@ -11,4 +11,6 @@ abstract BodyCreationSettings(hl.Abstract<"BodyCreationSettings">) {
     public function setEnhancedInternalEdgeRemoval(enable:Bool):Void {}
     public function setAllowSleeping(toggle:Bool):Void {}
     public function setIsSensor(isSensor:Bool):Void {}
+    public function setOverrideMassProperties(mode:Int):Void {}
+    public function setMassPropertiesOverrideMass(mass:Float):Void {}
 }

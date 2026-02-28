@@ -4,7 +4,7 @@ import h3d.Vector4;
 
 @:hlNative("jolt", "instance_")
 abstract JoltInstance(hl.Abstract<"JoltInstance">) {
-    public function setBroadphaseLayers(layers:hl.NativeArray<Int>):Void {}
+    public function setBroadphaseLayers(objectToBroadPhase:hl.NativeArray<Int>):Void {}
     public function setObjectVsBroadphaseLayerFilter(callback:(oLayer:Int, bpLayer:Int)->Bool):Void {}
     public function setObjectVsObjectLayerFilter(callback:(layer1:Int, layer2:Int)->Bool):Void {}
     public function setOnContactValidate(callback:(body1:Body, body2:Body, baseOffset:Vector4, collisionResult:CollideShapeResult)->Int):Void {}
@@ -20,6 +20,7 @@ abstract JoltInstance(hl.Abstract<"JoltInstance">) {
     public function getNarrowPhaseQuery(callback:NarrowPhaseQuery->Void):Void {}
     public function getNarrowPhaseQueryNoLock(callback:NarrowPhaseQuery->Void):Void {}
     public function getBodyLockInterface(callback:BodyLockInterface->Void):Void {}
+    public function getBodyLockInterfaceNoLock(callback:BodyLockInterface->Void):Void {}
     
     public inline function addConstraint(constraint:Constraint) @:privateAccess _addConstraint(constraint.ref);
     public inline function removeConstraint(constraint:Constraint) @:privateAccess _removeConstraint(constraint.ref);

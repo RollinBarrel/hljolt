@@ -4,10 +4,14 @@ import h3d.Vector4;
 
 @:hlNative("jolt", "body_")
 abstract Body(hl.Abstract<"Body">) {
+    public function getID():Int return -1;
+    public function isSensor():Bool return false;
+    public function getLinearVelocity():Vector4 return null;
     public function resetForce():Void {}
     public function resetTorque():Void {}
     public function getShape():ShapeRef return null;
     public function getMotionProperties():MotionProperties return null;
+    public function getUserData():Dynamic return 0;
     public function getWorldSpaceSurfaceNormal(subShapeID:Int, pos:Vector4):Vector4 return null;
     public function saveState(state:StateRecorder) {}
     public function restoreState(state:StateRecorder) {}

@@ -15,4 +15,5 @@ class Jolt {
     public static function meshShapeCreate(verts:hl.NativeArray<hl.F32>, materials:hl.NativeArray<PhysicsMaterial> = null):ShapeRef return null;
     public static function scaledShapeCreate(shape:ShapeRef, scale:Vector4):ShapeRef return null;
     public static function rotatedTranslatedShapeCreate(shape:ShapeRef, pos:Vector4, rot:Vector4):ShapeRef return null;
+    public static function emptyShapeCreate():ShapeRef return null;
 }

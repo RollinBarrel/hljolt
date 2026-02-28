@@ -166,17 +166,15 @@ public:
 	virtual ValidateResult OnContactValidate(const Body &inBody1, const Body &inBody2, RVec3Arg inBaseOffset, const CollideShapeResult &inCollisionResult) override {
 		if(!onContactValidate) return ValidateResult::AcceptAllContactsForThisBodyPair;
 
-		int body1 = inBody1.GetID().GetIndexAndSequenceNumber();
-		int body2 = inBody2.GetID().GetIndexAndSequenceNumber();
 		DVec3* baseOffset = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
 		baseOffset->Set(inBaseOffset.GetX(), inBaseOffset.GetY(), inBaseOffset.GetZ());
 
 		int res;
 		hl_blocking(false);
         if(onContactValidate->hasValue) {
-            res = ((int(*)(void*, int, int, DVec3*, const CollideShapeResult*))onContactValidate->fun)(onContactValidate->value, body1, body2, baseOffset, &inCollisionResult);
+            res = ((int(*)(void*, const Body*, const Body*, DVec3*, const CollideShapeResult*))onContactValidate->fun)(onContactValidate->value, &inBody1, &inBody2, baseOffset, &inCollisionResult);
         } else {
-            res = ((int(*)(int, int, DVec3*, const CollideShapeResult*))onContactValidate->fun)(body1, body2, baseOffset, &inCollisionResult);
+            res = ((int(*)(const Body*, const Body*, DVec3*, const CollideShapeResult*))onContactValidate->fun)(&inBody1, &inBody2, baseOffset, &inCollisionResult);
         }
 		hl_blocking(true);
 		return (ValidateResult)res;
@@ -185,14 +183,11 @@ public:
 	virtual void OnContactAdded(const Body &inBody1, const Body &inBody2, const ContactManifold &inManifold, ContactSettings &ioSettings) override {
 		if(!onContactAdded) return;
 
-		int body1 = inBody1.GetID().GetIndexAndSequenceNumber();
-		int body2 = inBody2.GetID().GetIndexAndSequenceNumber();
-
 		hl_blocking(false);
         if(onContactAdded->hasValue) {
-            ((void(*)(void*, int, int, const ContactManifold*, ContactSettings*))onContactAdded->fun)(onContactAdded->value, body1, body2, &inManifold, &ioSettings);
+            ((void(*)(void*, const Body*, const Body*, const ContactManifold*, ContactSettings*))onContactAdded->fun)(onContactAdded->value, &inBody1, &inBody2, &inManifold, &ioSettings);
         } else {
-            ((void(*)(int, int, const ContactManifold*, ContactSettings*))onContactAdded->fun)(body1, body2, &inManifold, &ioSettings);
+            ((void(*)(const Body*, const Body*, const ContactManifold*, ContactSettings*))onContactAdded->fun)(&inBody1, &inBody2, &inManifold, &ioSettings);
         }
 		hl_blocking(true);
 	}
@@ -200,14 +195,11 @@ public:
 	virtual void OnContactPersisted(const Body &inBody1, const Body &inBody2, const ContactManifold &inManifold, ContactSettings &ioSettings) override {
 		if(!onContactPersisted) return;
 
-		int body1 = inBody1.GetID().GetIndexAndSequenceNumber();
-		int body2 = inBody2.GetID().GetIndexAndSequenceNumber();
-
 		hl_blocking(false);
         if(onContactPersisted->hasValue) {
-            ((void(*)(void*, int, int, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(onContactPersisted->value, body1, body2, &inManifold, &ioSettings);
+            ((void(*)(void*, const Body*, const Body*, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(onContactPersisted->value, &inBody1, &inBody2, &inManifold, &ioSettings);
         } else {
-            ((void(*)(int, int, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(body1, body2, &inManifold, &ioSettings);
+            ((void(*)(const Body*, const Body*, const ContactManifold*, ContactSettings*))onContactPersisted->fun)(&inBody1, &inBody2, &inManifold, &ioSettings);
         }
 		hl_blocking(true);
 	}
@@ -497,7 +489,7 @@ HL_PRIM void HL_NAME(instance_set_on_contact_validate)(_JoltInstance* jolt, _vcl
         hl_add_root(&onContactValidate);
     }
 }
-DEFINE_PRIM(_VOID, instance_set_on_contact_validate, JOLTINST _FUN(_I32, _I32 _I32 _STRUCT COLSHAPERES));
+DEFINE_PRIM(_VOID, instance_set_on_contact_validate, JOLTINST _FUN(_I32, BODY BODY _STRUCT COLSHAPERES));
 
 HL_PRIM void HL_NAME(instance_set_on_contact_added)(_JoltInstance* jolt, _vclosure* callback) {
 	vclosure* &onContactAdded = jolt->jolt->contact_listener.onContactAdded;
@@ -509,7 +501,7 @@ HL_PRIM void HL_NAME(instance_set_on_contact_added)(_JoltInstance* jolt, _vclosu
         hl_add_root(&onContactAdded);
     }
 }
-DEFINE_PRIM(_VOID, instance_set_on_contact_added, JOLTINST _FUN(_VOID, _I32 _I32 CONTACTMANIFOLD CONTACTSETTINGS));
+DEFINE_PRIM(_VOID, instance_set_on_contact_added, JOLTINST _FUN(_VOID, BODY BODY CONTACTMANIFOLD CONTACTSETTINGS));
 
 HL_PRIM void HL_NAME(instance_set_on_contact_persisted)(_JoltInstance* jolt, _vclosure* callback) {
 	vclosure* &onContactPersisted = jolt->jolt->contact_listener.onContactPersisted;
@@ -521,7 +513,7 @@ HL_PRIM void HL_NAME(instance_set_on_contact_persisted)(_JoltInstance* jolt, _vc
         hl_add_root(&onContactPersisted);
     }
 }
-DEFINE_PRIM(_VOID, instance_set_on_contact_persisted, JOLTINST _FUN(_VOID, _I32 _I32 CONTACTMANIFOLD CONTACTSETTINGS));
+DEFINE_PRIM(_VOID, instance_set_on_contact_persisted, JOLTINST _FUN(_VOID, BODY BODY CONTACTMANIFOLD CONTACTSETTINGS));
 
 HL_PRIM void HL_NAME(instance_set_on_contact_removed)(_JoltInstance* jolt, _vclosure* callback) {
 	vclosure* &onContactRemoved = jolt->jolt->contact_listener.onContactRemoved;

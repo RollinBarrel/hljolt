@@ -6,7 +6,7 @@ import h3d.Vector4;
 class Jolt {
     public static function initialize():Void {}
     public static function uninitialize():Void {}
-    public static function instanceCreate():JoltInstance return null;
+    public static function instanceCreate(numBroadPhaseLayers:Int):JoltInstance return null;
 
     public static function boxShapeCreate(halfExtent:Vector4, convexRadius:Float, material:PhysicsMaterial = null):ShapeRef return null;
     public static function sphereShapeCreate(radius:Float, material:PhysicsMaterial = null):ShapeRef return null;

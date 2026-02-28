@@ -253,7 +253,7 @@ public:
 	BodyActivationListenerImpl body_activation_listener;
 	ContactListenerImpl contact_listener;
 
-	JoltInstance() :
+	JoltInstance(int numBroadPhaseLayers) :
 		temp_allocator(10 * 1024 * 1024),
 		job_system(),
 		broad_phase_layer_interface(),
@@ -266,6 +266,8 @@ public:
 		job_system.SetThreadInitFunction(threadInit);
 		job_system.SetThreadExitFunction(threadExit);
 		job_system.Init(cMaxPhysicsJobs, cMaxPhysicsBarriers, thread::hardware_concurrency() - 1);
+
+		broad_phase_layer_interface.numBroadPhaseLayers = numBroadPhaseLayers;
 
 		physics_system.Init(
 			65536,
@@ -433,14 +435,14 @@ HL_PRIM void HL_NAME(uninitialize)() {
 }
 DEFINE_PRIM(_VOID, uninitialize, _NO_ARG);
 
-HL_PRIM _JoltInstance* HL_NAME(instance_create)() {
+HL_PRIM _JoltInstance* HL_NAME(instance_create)(int numBroadPhaseLayers) {
 	_JoltInstance* jolt = (_JoltInstance*)hl_gc_alloc_finalizer(sizeof(_JoltInstance));
     jolt->finalise = finalize_jolt_instance;
-    jolt->jolt = new JoltInstance();
+    jolt->jolt = new JoltInstance(numBroadPhaseLayers);
     jolt->jolt->wrapper = jolt;
     return jolt;
 }
-DEFINE_PRIM(JOLTINST, instance_create, _NO_ARG);
+DEFINE_PRIM(JOLTINST, instance_create, _I32);
 
 HL_PRIM void HL_NAME(instance_set_broadphase_layers)(_JoltInstance* jolt, varray* layers) {
 	int* l = hl_aptr(layers, int);
@@ -448,7 +450,6 @@ HL_PRIM void HL_NAME(instance_set_broadphase_layers)(_JoltInstance* jolt, varray
 
 	BPLayerInterfaceImpl& broad_phase_layer_interface = jolt->jolt->broad_phase_layer_interface;
 
-	broad_phase_layer_interface.numBroadPhaseLayers = size;
 	for (int i = 0; i < size; i++) {
 		broad_phase_layer_interface.mObjectToBroadPhase[i] = (BroadPhaseLayer)l[i];
 	}

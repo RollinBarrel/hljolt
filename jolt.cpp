@@ -569,15 +569,16 @@ HL_PRIM void HL_NAME(contact_settings_set_combined_restitution)(ContactSettings*
 }
 DEFINE_PRIM(_VOID, contact_settings_set_combined_restitution, CONTACTSETTINGS _F64);
 
-HL_PRIM CollisionEstimationResult* HL_NAME(collision_estimate_estimate)(Body* inBody1, Body* inBody2, ContactManifold* inManifold, float inCombinedFriction, float inCombinedRestitution, float inMinVelocityForRestitution, int inNumIterations) {
+HL_PRIM void HL_NAME(collision_estimate_estimate)(Body* inBody1, Body* inBody2, ContactManifold* inManifold, float inCombinedFriction, float inCombinedRestitution, float inMinVelocityForRestitution, int inNumIterations, vclosure* callback) {
 	CollisionEstimationResult res;
 	EstimateCollisionResponse(*inBody1, *inBody2, *inManifold, res, inCombinedFriction, inCombinedRestitution, inMinVelocityForRestitution, inNumIterations);
-
-	CollisionEstimationResult* out = (CollisionEstimationResult*)hl_gc_alloc_noptr(sizeof(CollisionEstimationResult));
-	*out = res;
-	return out;
+	if (callback->hasValue) {
+		((void(*)(void*, CollisionEstimationResult*))callback->fun)(callback->value, &res);
+	} else {
+		((void(*)(CollisionEstimationResult*))callback->fun)(&res);
+	}
 }
-DEFINE_PRIM(COLLISIONESTIMATE, collision_estimate_estimate, BODY BODY CONTACTMANIFOLD _F32 _F32 _F32 _I32);
+DEFINE_PRIM(_VOID, collision_estimate_estimate, BODY BODY CONTACTMANIFOLD _F32 _F32 _F32 _I32 _FUN(_VOID, COLLISIONESTIMATE));
 
 HL_PRIM DVec3* HL_NAME(collision_estimate_get_linear_velocity1)(CollisionEstimationResult* estimation) {
 	Vec3 r = estimation->mLinearVelocity1;

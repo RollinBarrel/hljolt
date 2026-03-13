@@ -61,6 +61,13 @@ using namespace literals;
 #define DISTANCECONSTRAINTSETTINGS _ABSTRACT(DistanceConstraintSettings)
 #define SLIDERCONSTRAINTSETTINGS _ABSTRACT(SliderConstraintSettings)
 
+typedef struct {
+	double x;
+	double y;
+	double z;
+	double w;
+} DVec4;
+
 typedef struct __ShapeRef _ShapeRef;
 struct __ShapeRef {
     void (*finalise)(_ShapeRef*);
@@ -169,15 +176,17 @@ public:
 	virtual ValidateResult OnContactValidate(const Body &inBody1, const Body &inBody2, RVec3Arg inBaseOffset, const CollideShapeResult &inCollisionResult) override {
 		if(!onContactValidate) return ValidateResult::AcceptAllContactsForThisBodyPair;
 
-		DVec3* baseOffset = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-		baseOffset->Set(inBaseOffset.GetX(), inBaseOffset.GetY(), inBaseOffset.GetZ());
+		DVec4* baseOffset = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+		baseOffset->x = inBaseOffset.GetX();
+		baseOffset->y = inBaseOffset.GetY();
+		baseOffset->z = inBaseOffset.GetZ();
 
 		int res;
 		hl_blocking(false);
         if(onContactValidate->hasValue) {
-            res = ((int(*)(void*, const Body*, const Body*, DVec3*, const CollideShapeResult*))onContactValidate->fun)(onContactValidate->value, &inBody1, &inBody2, baseOffset, &inCollisionResult);
+            res = ((int(*)(void*, const Body*, const Body*, DVec4*, const CollideShapeResult*))onContactValidate->fun)(onContactValidate->value, &inBody1, &inBody2, baseOffset, &inCollisionResult);
         } else {
-            res = ((int(*)(const Body*, const Body*, DVec3*, const CollideShapeResult*))onContactValidate->fun)(&inBody1, &inBody2, baseOffset, &inCollisionResult);
+            res = ((int(*)(const Body*, const Body*, DVec4*, const CollideShapeResult*))onContactValidate->fun)(&inBody1, &inBody2, baseOffset, &inCollisionResult);
         }
 		hl_blocking(true);
 		return (ValidateResult)res;
@@ -531,25 +540,29 @@ HL_PRIM void HL_NAME(instance_set_on_contact_removed)(_JoltInstance* jolt, _vclo
 }
 DEFINE_PRIM(_VOID, instance_set_on_contact_removed, JOLTINST _FUN(_VOID, _I32 _I32 _I32 _I32));
 
-HL_PRIM void HL_NAME(instance_set_gravity)(_JoltInstance* jolt, DVec3* inGravity) {
-	jolt->jolt->physics_system.SetGravity(Vec3Arg(inGravity->mF64[0], inGravity->mF64[1], inGravity->mF64[2]));
+HL_PRIM void HL_NAME(instance_set_gravity)(_JoltInstance* jolt, DVec4* inGravity) {
+	jolt->jolt->physics_system.SetGravity(Vec3Arg(inGravity->x, inGravity->y, inGravity->z));
 }
 DEFINE_PRIM(_VOID, instance_set_gravity, JOLTINST _STRUCT);
 
-HL_PRIM DVec3* HL_NAME(instance_get_gravity)(_JoltInstance* jolt) {
+HL_PRIM DVec4* HL_NAME(instance_get_gravity)(_JoltInstance* jolt) {
 	Vec3 r = jolt->jolt->physics_system.GetGravity();
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, instance_get_gravity, JOLTINST);
 
-HL_PRIM DVec3* HL_NAME(contact_manifold_get_world_space_normal)(ContactManifold* manifold) {
+HL_PRIM DVec4* HL_NAME(contact_manifold_get_world_space_normal)(ContactManifold* manifold) {
 	Vec3 r = manifold->mWorldSpaceNormal;
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, contact_manifold_get_world_space_normal, CONTACTMANIFOLD);
@@ -580,18 +593,24 @@ HL_PRIM void HL_NAME(collision_estimate_estimate)(Body* inBody1, Body* inBody2, 
 }
 DEFINE_PRIM(_VOID, collision_estimate_estimate, BODY BODY CONTACTMANIFOLD _F32 _F32 _F32 _I32 _FUN(_VOID, COLLISIONESTIMATE));
 
-HL_PRIM DVec3* HL_NAME(collision_estimate_get_linear_velocity1)(CollisionEstimationResult* estimation) {
+HL_PRIM DVec4* HL_NAME(collision_estimate_get_linear_velocity1)(CollisionEstimationResult* estimation) {
 	Vec3 r = estimation->mLinearVelocity1;
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, collision_estimate_get_linear_velocity1, COLLISIONESTIMATE);
 
-HL_PRIM DVec3* HL_NAME(collision_estimate_get_linear_velocity2)(CollisionEstimationResult* estimation) {
+HL_PRIM DVec4* HL_NAME(collision_estimate_get_linear_velocity2)(CollisionEstimationResult* estimation) {
 	Vec3 r = estimation->mLinearVelocity2;
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, collision_estimate_get_linear_velocity2, COLLISIONESTIMATE);
@@ -725,9 +744,11 @@ HL_PRIM void HL_NAME(state_recorder_clear)(_StateRecorder* ref) {
 }
 DEFINE_PRIM(_VOID, state_recorder_clear, STATEREC);
 
-HL_PRIM _ShapeRef* HL_NAME(box_shape_create)(DVec3* inHalfExtent, double inConvexRadius, PhysicsMaterial* inMaterial) {
+HL_PRIM _ShapeRef* HL_NAME(box_shape_create)(DVec4* inHalfExtent, double inConvexRadius, PhysicsMaterial* inMaterial) {
+	DVec3 halfExtent(inHalfExtent->x, inHalfExtent->y, inHalfExtent->z);
+	
 	// Jolt does refcounts on this and will release it when there's no references
-	BoxShapeSettings* settings = new BoxShapeSettings(inHalfExtent->ToVec3RoundDown(), (float)inConvexRadius, inMaterial);
+	BoxShapeSettings* settings = new BoxShapeSettings(halfExtent.ToVec3RoundDown(), (float)inConvexRadius, inMaterial);
 
 	Shape* r = settings->Create().Get().GetPtr();
 	r->AddRef();
@@ -800,10 +821,10 @@ HL_PRIM StaticCompoundShapeSettings* HL_NAME(static_compound_shape_settings_allo
 }
 DEFINE_PRIM(STATICCOMPOUNDSHAPESETTINGS, static_compound_shape_settings_alloc, _NO_ARG);
 
-HL_PRIM void HL_NAME(static_compound_shape_settings_add_shape)(StaticCompoundShapeSettings* settings, DVec3* inPosition, DVec3* inRotation, _ShapeRef* inShape, int inUserData) {
+HL_PRIM void HL_NAME(static_compound_shape_settings_add_shape)(StaticCompoundShapeSettings* settings, DVec4* inPosition, DVec4* inRotation, _ShapeRef* inShape, int inUserData) {
 	settings->AddShape(
-		Vec3Arg(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
-		QuatArg(inRotation->mF64[0],inRotation->mF64[1], inRotation->mF64[2], inRotation->mF64[3]),
+		Vec3Arg(inPosition->x, inPosition->y, inPosition->z),
+		QuatArg(inRotation->x, inRotation->y, inRotation->z, inRotation->w),
 		inShape->ref,
 		inUserData
 	);
@@ -874,10 +895,10 @@ HL_PRIM _ShapeRef* HL_NAME(mesh_shape_create)(varray* inPoints, varray* inMateri
 }
 DEFINE_PRIM(SHAPE, mesh_shape_create, _ARR _ARR);
 
-HL_PRIM _ShapeRef* HL_NAME(scaled_shape_create)(_ShapeRef* inShape, DVec3* inScale) {
+HL_PRIM _ShapeRef* HL_NAME(scaled_shape_create)(_ShapeRef* inShape, DVec4* inScale) {
 	ScaledShapeSettings* settings = new ScaledShapeSettings(
 		inShape->ref,
-		Vec3Arg(inScale->mF64[0], inScale->mF64[1], inScale->mF64[2])
+		Vec3Arg(inScale->x, inScale->y, inScale->z)
 	);
 
 	Shape* r = settings->Create().Get().GetPtr();
@@ -890,10 +911,10 @@ HL_PRIM _ShapeRef* HL_NAME(scaled_shape_create)(_ShapeRef* inShape, DVec3* inSca
 }
 DEFINE_PRIM(SHAPE, scaled_shape_create, SHAPE _STRUCT);
 
-HL_PRIM _ShapeRef* HL_NAME(rotated_translated_shape_create)(_ShapeRef* inShape, DVec3* inPosition, DVec3* inRotation) {
+HL_PRIM _ShapeRef* HL_NAME(rotated_translated_shape_create)(_ShapeRef* inShape, DVec4* inPosition, DVec4* inRotation) {
 	RotatedTranslatedShapeSettings* settings = new RotatedTranslatedShapeSettings(
-		Vec3Arg(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
-		QuatArg(inRotation->mF64[0],inRotation->mF64[1], inRotation->mF64[2], inRotation->mF64[3]),
+		Vec3Arg(inPosition->x, inPosition->y, inPosition->z),
+		QuatArg(inRotation->x, inRotation->y, inRotation->z, inRotation->w),
 		inShape->ref
 	);
 
@@ -920,11 +941,11 @@ HL_PRIM _ShapeRef* HL_NAME(empty_shape_create)() {
 }
 DEFINE_PRIM(SHAPE, empty_shape_create, _NO_ARG);
 
-HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* inShape, DVec3* inPosition, DVec3* inRotation, EMotionType inMotionType, int inObjectLayer) {
+HL_PRIM BodyCreationSettings* HL_NAME(body_creation_settings_create)(_ShapeRef* inShape, DVec4* inPosition, DVec4* inRotation, EMotionType inMotionType, int inObjectLayer) {
 	BodyCreationSettings* settings = new BodyCreationSettings(
 		inShape->ref,
-		RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
-		QuatArg(inRotation->mF64[0],inRotation->mF64[1], inRotation->mF64[2], inRotation->mF64[3]),
+		RVec3(inPosition->x, inPosition->y, inPosition->z),
+		QuatArg(inRotation->x, inRotation->y, inRotation->z, inRotation->w),
 		inMotionType,
 		inObjectLayer
 	);
@@ -1085,11 +1106,11 @@ HL_PRIM void HL_NAME(body_interface_destroy_body)(BodyInterface* body_interface,
 }
 DEFINE_PRIM(_VOID, body_interface_destroy_body, BODYIF _I32);
 
-HL_PRIM void HL_NAME(body_interface_set_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inPosition, bool activate) {
+HL_PRIM void HL_NAME(body_interface_set_position)(BodyInterface* body_interface, uint32 bodyID, DVec4* inPosition, bool activate) {
 	hl_blocking(true);
 	body_interface->SetPosition(
 		BodyID(bodyID),
-		RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]),
+		RVec3(inPosition->x, inPosition->y, inPosition->z),
 		(EActivation)!activate
 	);
 	hl_blocking(false);
@@ -1153,173 +1174,187 @@ HL_PRIM int HL_NAME(body_interface_get_object_layer)(BodyInterface* body_interfa
 }
 DEFINE_PRIM(_I32, body_interface_get_object_layer, BODYIF _I32);
 
-HL_PRIM DVec3* HL_NAME(body_interface_get_position)(BodyInterface* body_interface, uint32 bodyID) {
+HL_PRIM DVec4* HL_NAME(body_interface_get_position)(BodyInterface* body_interface, uint32 bodyID) {
 	hl_blocking(true);
 	RVec3 r = body_interface->GetPosition(BodyID(bodyID));
 	hl_blocking(false);
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_interface_get_position, BODYIF _I32);
 
-HL_PRIM DVec3* HL_NAME(body_interface_get_center_of_mass_position)(BodyInterface* body_interface, uint32 bodyID) {
+HL_PRIM DVec4* HL_NAME(body_interface_get_center_of_mass_position)(BodyInterface* body_interface, uint32 bodyID) {
 	hl_blocking(true);
 	RVec3 r = body_interface->GetCenterOfMassPosition(BodyID(bodyID));
 	hl_blocking(false);
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_interface_get_center_of_mass_position, BODYIF _I32);
 
-HL_PRIM void HL_NAME(body_interface_set_rotation)(BodyInterface* body_interface, uint32 bodyID, DVec3* inRotation, bool activate) {
+HL_PRIM void HL_NAME(body_interface_set_rotation)(BodyInterface* body_interface, uint32 bodyID, DVec4* inRotation, bool activate) {
 	hl_blocking(true);
 	body_interface->SetRotation(
 		BodyID(bodyID),
-		Quat((float)inRotation->mF64[0],(float)inRotation->mF64[1], (float)inRotation->mF64[2], (float)inRotation->mF64[3]),
+		Quat((float)inRotation->x, (float)inRotation->y, (float)inRotation->z, (float)inRotation->w),
 		(EActivation)!activate
 	);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_rotation, BODYIF _I32 _STRUCT _BOOL);
 
-HL_PRIM DVec3* HL_NAME(body_interface_get_rotation)(BodyInterface* body_interface, uint32 bodyID) {
+HL_PRIM DVec4* HL_NAME(body_interface_get_rotation)(BodyInterface* body_interface, uint32 bodyID) {
 	hl_blocking(true);
 	Quat r = body_interface->GetRotation(BodyID(bodyID));
 	hl_blocking(false);
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
-	d->mF64[3] = r.GetW();
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
+	d->w = r.GetW();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_interface_get_rotation, BODYIF _I32);
 
-HL_PRIM void HL_NAME(body_interface_move_kinematic)(BodyInterface* body_interface, uint32 bodyID, DVec3* inTargetPosition, DVec3* inTargetRotation, double inDeltaTime) {
+HL_PRIM void HL_NAME(body_interface_move_kinematic)(BodyInterface* body_interface, uint32 bodyID, DVec4* inTargetPosition, DVec4* inTargetRotation, double inDeltaTime) {
 	hl_blocking(true);
 	body_interface->MoveKinematic(
 		BodyID(bodyID),
-		RVec3(inTargetPosition->mF64[0], inTargetPosition->mF64[1], inTargetPosition->mF64[2]),
-		QuatArg(inTargetRotation->mF64[0], inTargetRotation->mF64[1], inTargetRotation->mF64[2], inTargetRotation->mF64[3]),
+		RVec3(inTargetPosition->x, inTargetPosition->y, inTargetPosition->z),
+		QuatArg(inTargetRotation->x, inTargetRotation->y, inTargetRotation->z, inTargetRotation->w),
 		inDeltaTime
 	);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_move_kinematic, BODYIF _I32 _STRUCT _STRUCT _F64);
 
-HL_PRIM void HL_NAME(body_interface_set_linear_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inLinearVelocity) {
+HL_PRIM void HL_NAME(body_interface_set_linear_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec4* inLinearVelocity) {
+	DVec3 linearVelocity(inLinearVelocity->x, inLinearVelocity->y, inLinearVelocity->z);
 	hl_blocking(true);
-	body_interface->SetLinearVelocity(BodyID(bodyID), inLinearVelocity->ToVec3RoundDown());
+	body_interface->SetLinearVelocity(BodyID(bodyID), linearVelocity.ToVec3RoundDown());
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_linear_velocity, BODYIF _I32 _STRUCT);
 
-HL_PRIM DVec3* HL_NAME(body_interface_get_linear_velocity)(BodyInterface* body_interface, uint32 bodyID) {
+HL_PRIM DVec4* HL_NAME(body_interface_get_linear_velocity)(BodyInterface* body_interface, uint32 bodyID) {
 	hl_blocking(true);
 	Vec3 r = body_interface->GetLinearVelocity(BodyID(bodyID));
 	hl_blocking(false);
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_interface_get_linear_velocity, BODYIF _I32);
 
-HL_PRIM void HL_NAME(body_interface_set_angular_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inAngularVelocity) {
+HL_PRIM void HL_NAME(body_interface_set_angular_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec4* inAngularVelocity) {
+	DVec3 angularVelocity(inAngularVelocity->x, inAngularVelocity->y, inAngularVelocity->z);
 	hl_blocking(true);
-	body_interface->SetAngularVelocity(BodyID(bodyID), inAngularVelocity->ToVec3RoundDown());
+	body_interface->SetAngularVelocity(BodyID(bodyID), angularVelocity.ToVec3RoundDown());
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_set_angular_velocity, BODYIF _I32 _STRUCT);
 
-HL_PRIM DVec3* HL_NAME(body_interface_get_angular_velocity)(BodyInterface* body_interface, uint32 bodyID) {
+HL_PRIM DVec4* HL_NAME(body_interface_get_angular_velocity)(BodyInterface* body_interface, uint32 bodyID) {
 	hl_blocking(true);
 	Vec3 r = body_interface->GetAngularVelocity(BodyID(bodyID));
 	hl_blocking(false);
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_interface_get_angular_velocity, BODYIF _I32);
 
-HL_PRIM DVec3* HL_NAME(body_interface_get_point_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec3* inPoint) {
+HL_PRIM DVec4* HL_NAME(body_interface_get_point_velocity)(BodyInterface* body_interface, uint32 bodyID, DVec4* inPoint) {
 	hl_blocking(true);
 	Vec3 r = body_interface->GetPointVelocity(
 		BodyID(bodyID),
-		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2])
+		RVec3(inPoint->x, inPoint->y, inPoint->z)
 	);
 	hl_blocking(false);
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_interface_get_point_velocity, BODYIF _I32 _STRUCT);
 
-HL_PRIM void HL_NAME(body_interface_add_force)(BodyInterface* body_interface, uint32 bodyID, DVec3* inForce, bool activate) {
+HL_PRIM void HL_NAME(body_interface_add_force)(BodyInterface* body_interface, uint32 bodyID, DVec4* inForce, bool activate) {
 	hl_blocking(true);
 	body_interface->AddForce(
 		BodyID(bodyID),
-		Vec3Arg(inForce->mF64[0], inForce->mF64[1], inForce->mF64[2]),
+		Vec3Arg(inForce->x, inForce->y, inForce->z),
 		(EActivation)!activate
 	);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_force, BODYIF _I32 _STRUCT _BOOL);
 
-HL_PRIM void HL_NAME(body_interface_add_force_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inForce, DVec3* inPoint, bool activate) {
+HL_PRIM void HL_NAME(body_interface_add_force_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec4* inForce, DVec4* inPoint, bool activate) {
 	hl_blocking(true);
 	body_interface->AddForce(
 		BodyID(bodyID),
-		Vec3Arg(inForce->mF64[0], inForce->mF64[1], inForce->mF64[2]),
-		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2]),
+		Vec3Arg(inForce->x, inForce->y, inForce->z),
+		RVec3(inPoint->x, inPoint->y, inPoint->z),
 		(EActivation)!activate
 	);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_force_at_position, BODYIF _I32 _STRUCT _STRUCT _BOOL);
 
-HL_PRIM void HL_NAME(body_interface_add_torque)(BodyInterface* body_interface, uint32 bodyID, DVec3* inTorque, bool activate) {
+HL_PRIM void HL_NAME(body_interface_add_torque)(BodyInterface* body_interface, uint32 bodyID, DVec4* inTorque, bool activate) {
 	hl_blocking(true);
 	body_interface->AddTorque(
 		BodyID(bodyID),
-		Vec3Arg(inTorque->mF64[0], inTorque->mF64[1], inTorque->mF64[2]),
+		Vec3Arg(inTorque->x, inTorque->y, inTorque->z),
 		(EActivation)!activate
 	);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_torque, BODYIF _I32 _STRUCT _BOOL);
 
-HL_PRIM void HL_NAME(body_interface_add_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec3* inImpulse) {
+HL_PRIM void HL_NAME(body_interface_add_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec4* inImpulse) {
 	hl_blocking(true);
 	body_interface->AddImpulse(
 		BodyID(bodyID),
-		Vec3Arg(inImpulse->mF64[0], inImpulse->mF64[1], inImpulse->mF64[2])
+		Vec3Arg(inImpulse->x, inImpulse->y, inImpulse->z)
 	);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_impulse, BODYIF _I32 _STRUCT);
 
-HL_PRIM void HL_NAME(body_interface_add_impulse_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec3* inImpulse, DVec3* inPoint) {
+HL_PRIM void HL_NAME(body_interface_add_impulse_at_position)(BodyInterface* body_interface, uint32 bodyID, DVec4* inImpulse, DVec4* inPoint) {
 	hl_blocking(true);
 	body_interface->AddImpulse(
 		BodyID(bodyID),
-		Vec3Arg(inImpulse->mF64[0], inImpulse->mF64[1], inImpulse->mF64[2]),
-		RVec3(inPoint->mF64[0], inPoint->mF64[1], inPoint->mF64[2])
+		Vec3Arg(inImpulse->x, inImpulse->y, inImpulse->z),
+		RVec3(inPoint->x, inPoint->y, inPoint->z)
 	);
 	hl_blocking(false);
 }
 DEFINE_PRIM(_VOID, body_interface_add_impulse_at_position, BODYIF _I32 _STRUCT _STRUCT);
 
-HL_PRIM void HL_NAME(body_interface_add_angular_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec3* inAngularImpulse) {
+HL_PRIM void HL_NAME(body_interface_add_angular_impulse)(BodyInterface* body_interface, uint32 bodyID, DVec4* inAngularImpulse) {
 	hl_blocking(true);
 	body_interface->AddAngularImpulse(
 		BodyID(bodyID),
-		Vec3Arg(inAngularImpulse->mF64[0], inAngularImpulse->mF64[1], inAngularImpulse->mF64[2])
+		Vec3Arg(inAngularImpulse->x, inAngularImpulse->y, inAngularImpulse->z)
 	);
 	hl_blocking(false);
 }
@@ -1400,13 +1435,13 @@ HL_PRIM void* HL_NAME(body_interface_get_user_data)(BodyInterface* body_interfac
 DEFINE_PRIM(_DYN, body_interface_get_user_data, BODYIF _I32);
 
 HL_PRIM RayCastResult* HL_NAME(narrow_phase_query_cast_ray_closest)(
-	NarrowPhaseQuery* narrow_phase_query, DVec3* origin, DVec3* direction,
+	NarrowPhaseQuery* narrow_phase_query, DVec4* origin, DVec4* direction,
 	vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback,
 	bool collideWithBackFacesTriangles, bool collideWithBackFacesConvex, bool treatConvexAsSolid
 ) {
 	RRayCast ray;
-	ray.mOrigin = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
-	ray.mDirection = Vec3(direction->mF64[0], direction->mF64[1], direction->mF64[2]);
+	ray.mOrigin = RVec3(origin->x, origin->y, origin->z);
+	ray.mDirection = Vec3(direction->x, direction->y, direction->z);
 
 	RayCastResult* hit = (RayCastResult*)hl_gc_alloc_noptr(sizeof(RayCastResult));
 	hit->Reset();
@@ -1435,14 +1470,14 @@ HL_PRIM RayCastResult* HL_NAME(narrow_phase_query_cast_ray_closest)(
 DEFINE_PRIM(_STRUCT, narrow_phase_query_cast_ray_closest, NARROWQUERY _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32));
 
 HL_PRIM void HL_NAME(narrow_phase_query_cast_ray)(
-	NarrowPhaseQuery* narrow_phase_query, DVec3* origin, DVec3* direction,
+	NarrowPhaseQuery* narrow_phase_query, DVec4* origin, DVec4* direction,
 	vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback,
 	bool collideWithBackFacesTriangles, bool collideWithBackFacesConvex, bool treatConvexAsSolid,
 	vclosure* callback
 ) {
 	RRayCast ray;
-	ray.mOrigin = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
-	ray.mDirection = Vec3(direction->mF64[0], direction->mF64[1], direction->mF64[2]);
+	ray.mOrigin = RVec3(origin->x, origin->y, origin->z);
+	ray.mDirection = Vec3(direction->x, direction->y, direction->z);
 
 	BroadPhaseLayerFilterHL broadPhaseLayerFilter = {};
 	if (broadPhaseLayerFilterCallback) {
@@ -1497,16 +1532,16 @@ HL_PRIM void HL_NAME(narrow_phase_query_cast_ray)(
 }
 DEFINE_PRIM(_VOID, narrow_phase_query_cast_ray, NARROWQUERY _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _BOOL _BOOL _BOOL _FUN(_VOID, _ARR));
 
-HL_PRIM void HL_NAME(narrow_phase_query_cast_shape)(NarrowPhaseQuery* narrow_phase_query, _ShapeRef* shape, DVec3* origin, DVec3* rotation, DVec3* direction, vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback, vclosure* callback) {
-	RVec3 pos = RVec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
+HL_PRIM void HL_NAME(narrow_phase_query_cast_shape)(NarrowPhaseQuery* narrow_phase_query, _ShapeRef* shape, DVec4* origin, DVec4* rotation, DVec4* direction, vclosure* broadPhaseLayerFilterCallback, vclosure* objectLayerFilterCallback, vclosure* bodyFilterCallback, vclosure* callback) {
+	RVec3 pos = RVec3(origin->x, origin->y, origin->z);
 	RShapeCast shapeCast = RShapeCast::sFromWorldTransform(
 		shape->ref,
 		Vec3::sOne(),
 		RMat44::sRotationTranslation(
-			QuatArg(rotation->mF64[0], rotation->mF64[1], rotation->mF64[2], rotation->mF64[3]),
+			QuatArg(rotation->x, rotation->y, rotation->z, rotation->w),
 			pos
 		),
-		Vec3Arg(direction->mF64[0], direction->mF64[1], direction->mF64[2])
+		Vec3Arg(direction->x, direction->y, direction->z)
 	);
 
 	// TODO: expose more options
@@ -1561,29 +1596,35 @@ HL_PRIM void HL_NAME(narrow_phase_query_cast_shape)(NarrowPhaseQuery* narrow_pha
 }
 DEFINE_PRIM(_VOID, narrow_phase_query_cast_shape, NARROWQUERY SHAPE _STRUCT _STRUCT _STRUCT _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_BOOL, _I32) _FUN(_VOID, _ARR));
 
-HL_PRIM DVec3* HL_NAME(shape_cast_result_get_contact_point_on1)(ShapeCastResult* shape_cast_result) {
+HL_PRIM DVec4* HL_NAME(shape_cast_result_get_contact_point_on1)(ShapeCastResult* shape_cast_result) {
 	Vec3 point = shape_cast_result->mContactPointOn1;
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(point.GetX(), point.GetY(), point.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = point.GetX();
+	d->y = point.GetY();
+	d->z = point.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, shape_cast_result_get_contact_point_on1, SHAPECASTRES);
 
-HL_PRIM DVec3* HL_NAME(shape_cast_result_get_contact_point_on2)(ShapeCastResult* shape_cast_result) {
+HL_PRIM DVec4* HL_NAME(shape_cast_result_get_contact_point_on2)(ShapeCastResult* shape_cast_result) {
 	Vec3 point = shape_cast_result->mContactPointOn2;
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(point.GetX(), point.GetY(), point.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = point.GetX();
+	d->y = point.GetY();
+	d->z = point.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, shape_cast_result_get_contact_point_on2, SHAPECASTRES);
 
-HL_PRIM DVec3* HL_NAME(shape_cast_result_get_penetration_axis)(ShapeCastResult* shape_cast_result) {
+HL_PRIM DVec4* HL_NAME(shape_cast_result_get_penetration_axis)(ShapeCastResult* shape_cast_result) {
 	Vec3 axis = shape_cast_result->mPenetrationAxis;
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(axis.GetX(), axis.GetY(), axis.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = axis.GetX();
+	d->y = axis.GetY();
+	d->z = axis.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, shape_cast_result_get_penetration_axis, SHAPECASTRES);
@@ -1638,11 +1679,13 @@ HL_PRIM bool HL_NAME(body_is_sensor)(Body* body) {
 }
 DEFINE_PRIM(_BOOL, body_is_sensor, BODY);
 
-HL_PRIM DVec3* HL_NAME(body_get_linear_velocity)(Body* body) {
+HL_PRIM DVec4* HL_NAME(body_get_linear_velocity)(Body* body) {
 	Vec3 r = body->GetLinearVelocity();
 
-    DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(r.GetX(), r.GetY(), r.GetZ());
+    DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = r.GetX();
+	d->y = r.GetY();
+	d->z = r.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_get_linear_velocity, BODY);
@@ -1668,14 +1711,16 @@ HL_PRIM void* HL_NAME(body_get_user_data)(Body* body) {
 }
 DEFINE_PRIM(_DYN, body_get_user_data, BODY);
 
-HL_PRIM DVec3* HL_NAME(body_get_world_space_surface_normal)(Body* body, int inSubShapeID, DVec3* inPosition) {
-	RVec3 pos = RVec3(inPosition->mF64[0], inPosition->mF64[1], inPosition->mF64[2]);
+HL_PRIM DVec4* HL_NAME(body_get_world_space_surface_normal)(Body* body, int inSubShapeID, DVec4* inPosition) {
+	RVec3 pos = RVec3(inPosition->x, inPosition->y, inPosition->z);
 	SubShapeID subShapeID;
 	subShapeID.SetValue(inSubShapeID);
 	Vec3 normal = body->GetWorldSpaceSurfaceNormal(subShapeID, pos);
 
-	DVec3* d = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
-	d->Set(normal.GetX(), normal.GetY(), normal.GetZ());
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = normal.GetX();
+	d->y = normal.GetY();
+	d->z = normal.GetZ();
     return d;
 }
 DEFINE_PRIM(_STRUCT, body_get_world_space_surface_normal, BODY _I32 _STRUCT);
@@ -1720,14 +1765,17 @@ HL_PRIM void HL_NAME(motion_properties_set_angular_damping)(MotionProperties* mo
 }
 DEFINE_PRIM(_VOID, motion_properties_set_angular_damping, MOTIONPROPS _F64);
 
-HL_PRIM DVec3* HL_NAME(motion_properties_multiply_world_space_inverse_inertia_by_vector)(MotionProperties* motion_properties, DVec3* rotation, DVec3* vec) {
-	DVec3* r = (DVec3*)hl_gc_alloc_noptr(sizeof(DVec3));
+HL_PRIM DVec4* HL_NAME(motion_properties_multiply_world_space_inverse_inertia_by_vector)(MotionProperties* motion_properties, DVec4* rotation, DVec4* vec) {
 	Vec3 res = motion_properties->MultiplyWorldSpaceInverseInertiaByVector(
-		QuatArg(rotation->mF64[0], rotation->mF64[1], rotation->mF64[2], rotation->mF64[3]),
-		Vec3(vec->mF64[0], vec->mF64[1], vec->mF64[2])
+		QuatArg(rotation->x, rotation->y, rotation->z, rotation->w),
+		Vec3(vec->x, vec->y, vec->z)
 	);
-	r->Set(res.GetX(), res.GetY(), res.GetZ());
-	return r;
+	
+	DVec4* d = (DVec4*)hl_gc_alloc_noptr(sizeof(DVec4));
+	d->x = res.GetX();
+	d->y = res.GetY();
+	d->z = res.GetZ();
+    return d;
 }
 DEFINE_PRIM(_STRUCT, motion_properties_multiply_world_space_inverse_inertia_by_vector, MOTIONPROPS _STRUCT _STRUCT);
 
@@ -1736,10 +1784,10 @@ HL_PRIM int HL_NAME(shape_get_sub_type)(_ShapeRef* shape) {
 }
 DEFINE_PRIM(_I32, shape_get_sub_type, SHAPE);
 
-HL_PRIM RayCastResult* HL_NAME(shape_cast_ray)(_ShapeRef* shape, DVec3* origin, DVec3* direction) {
+HL_PRIM RayCastResult* HL_NAME(shape_cast_ray)(_ShapeRef* shape, DVec4* origin, DVec4* direction) {
 	RayCast ray;
-	ray.mOrigin = Vec3(origin->mF64[0], origin->mF64[1], origin->mF64[2]);
-	ray.mDirection = Vec3(direction->mF64[0], direction->mF64[1], direction->mF64[2]);
+	ray.mOrigin = Vec3(origin->x, origin->y, origin->z);
+	ray.mDirection = Vec3(direction->x, direction->y, direction->z);
 
 	SubShapeIDCreator subShapeIDCreator = {};
 	
@@ -1752,8 +1800,8 @@ HL_PRIM RayCastResult* HL_NAME(shape_cast_ray)(_ShapeRef* shape, DVec3* origin, 
 }
 DEFINE_PRIM(_STRUCT, shape_cast_ray, SHAPE _STRUCT _STRUCT);
 
-HL_PRIM _ShapeRef* HL_NAME(shape_scale)(_ShapeRef* shape, DVec3* inScale) {
-	Shape::ShapeResult scaled = shape->ref->ScaleShape(Vec3Arg(inScale->mF64[0], inScale->mF64[1], inScale->mF64[2]));
+HL_PRIM _ShapeRef* HL_NAME(shape_scale)(_ShapeRef* shape, DVec4* inScale) {
+	Shape::ShapeResult scaled = shape->ref->ScaleShape(Vec3Arg(inScale->x, inScale->y, inScale->z));
 	// JPH_ASSERT(scaled.IsValid());
 
 	Shape* r = scaled.Get();
@@ -1786,13 +1834,13 @@ HL_PRIM DistanceConstraintSettings* HL_NAME(distance_constraint_settings_alloc)(
 }
 DEFINE_PRIM(DISTANCECONSTRAINTSETTINGS, distance_constraint_settings_alloc, _NO_ARG);
 
-HL_PRIM void HL_NAME(distance_constraint_settings_set_point1)(DistanceConstraintSettings* constraint, DVec3* pos) {
-	constraint->mPoint1.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+HL_PRIM void HL_NAME(distance_constraint_settings_set_point1)(DistanceConstraintSettings* constraint, DVec4* pos) {
+	constraint->mPoint1.Set(pos->x, pos->y, pos->z);
 }
 DEFINE_PRIM(_VOID, distance_constraint_settings_set_point1, DISTANCECONSTRAINTSETTINGS _STRUCT);
 
-HL_PRIM void HL_NAME(distance_constraint_settings_set_point2)(DistanceConstraintSettings* constraint, DVec3* pos) {
-	constraint->mPoint2.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+HL_PRIM void HL_NAME(distance_constraint_settings_set_point2)(DistanceConstraintSettings* constraint, DVec4* pos) {
+	constraint->mPoint2.Set(pos->x, pos->y, pos->z);
 }
 DEFINE_PRIM(_VOID, distance_constraint_settings_set_point2, DISTANCECONSTRAINTSETTINGS _STRUCT);
 
@@ -1814,8 +1862,8 @@ HL_PRIM SliderConstraintSettings* HL_NAME(slider_constraint_settings_alloc)() {
 }
 DEFINE_PRIM(SLIDERCONSTRAINTSETTINGS, slider_constraint_settings_alloc, _NO_ARG);
 
-HL_PRIM void HL_NAME(slider_constraint_settings_set_slider_axis)(SliderConstraintSettings* constraint, DVec3* axis) {
-	constraint->SetSliderAxis(Vec3Arg(axis->mF64[0], axis->mF64[1], axis->mF64[2]));
+HL_PRIM void HL_NAME(slider_constraint_settings_set_slider_axis)(SliderConstraintSettings* constraint, DVec4* axis) {
+	constraint->SetSliderAxis(Vec3Arg(axis->x, axis->y, axis->z));
 }
 DEFINE_PRIM(_VOID, slider_constraint_settings_set_slider_axis, SLIDERCONSTRAINTSETTINGS _STRUCT);
 
@@ -1824,13 +1872,13 @@ HL_PRIM void HL_NAME(slider_constraint_settings_set_auto_detect_point)(SliderCon
 }
 DEFINE_PRIM(_VOID, slider_constraint_settings_set_auto_detect_point, SLIDERCONSTRAINTSETTINGS _BOOL);
 
-HL_PRIM void HL_NAME(slider_constraint_settings_set_point1)(SliderConstraintSettings* constraint, DVec3* pos) {
-	constraint->mPoint1.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+HL_PRIM void HL_NAME(slider_constraint_settings_set_point1)(SliderConstraintSettings* constraint, DVec4* pos) {
+	constraint->mPoint1.Set(pos->x, pos->y, pos->z);
 }
 DEFINE_PRIM(_VOID, slider_constraint_settings_set_point1, SLIDERCONSTRAINTSETTINGS _STRUCT);
 
-HL_PRIM void HL_NAME(slider_constraint_settings_set_point2)(SliderConstraintSettings* constraint, DVec3* pos) {
-	constraint->mPoint2.Set(pos->mF64[0], pos->mF64[1], pos->mF64[2]);
+HL_PRIM void HL_NAME(slider_constraint_settings_set_point2)(SliderConstraintSettings* constraint, DVec4* pos) {
+	constraint->mPoint2.Set(pos->x, pos->y, pos->z);
 }
 DEFINE_PRIM(_VOID, slider_constraint_settings_set_point2, SLIDERCONSTRAINTSETTINGS _STRUCT);
 
@@ -1850,8 +1898,8 @@ HL_PRIM void HL_NAME(constraint_set_enabled)(_ConstraintRef* ref, bool toggle) {
 }
 DEFINE_PRIM(_VOID, constraint_set_enabled, CONSTRAINT _BOOL);
 
-HL_PRIM void HL_NAME(constraint_notify_shape_changed)(_ConstraintRef* ref, int bodyID, DVec3* deltaCOM) {
-	ref->ref->NotifyShapeChanged(BodyID(bodyID), Vec3Arg(deltaCOM->mF64[0], deltaCOM->mF64[1], deltaCOM->mF64[2]));
+HL_PRIM void HL_NAME(constraint_notify_shape_changed)(_ConstraintRef* ref, int bodyID, DVec4* deltaCOM) {
+	ref->ref->NotifyShapeChanged(BodyID(bodyID), Vec3Arg(deltaCOM->x, deltaCOM->y, deltaCOM->z));
 }
 DEFINE_PRIM(_VOID, constraint_notify_shape_changed, CONSTRAINT _I32 _STRUCT);
 

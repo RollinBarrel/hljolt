@@ -19,9 +19,19 @@ endif()
 
 set_property(TARGET Jolt PROPERTY POSITION_INDEPENDENT_CODE ON)
 
+if (JOLT_USE_PTHREAD)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+endif()
+
 add_library(jolt.hdll jolt.cpp)
 target_link_libraries(jolt.hdll Jolt)
 set_target_properties(jolt.hdll PROPERTIES PREFIX "" OUTPUT_NAME jolt SUFFIX .hdll)
+
+if (JOLT_USE_PTHREAD)
+	target_sources(jolt.hdll PRIVATE JobSystemPThread.cpp)
+	target_link_libraries(jolt.hdll pthread)
+	target_compile_definitions(jolt.hdll PRIVATE JOLT_USE_PTHREAD)
+endif()
 
 if (WIN32)
 	if (BUILD_HASHLINK)

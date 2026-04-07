@@ -5,7 +5,6 @@
 #include <Jolt/RegisterTypes.h>
 #include <Jolt/Core/Factory.h>
 #include <Jolt/Core/TempAllocator.h>
-#include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Physics/PhysicsSettings.h>
 #include <Jolt/Physics/PhysicsSystem.h>
 #include <Jolt/Physics/StateRecorderImpl.h>
@@ -33,6 +32,12 @@
 #include <Jolt/Physics/Body/BodyActivationListener.h>
 #include <Jolt/Physics/Constraints/DistanceConstraint.h>
 #include <Jolt/Physics/Constraints/SliderConstraint.h>
+
+#if defined(JOLT_USE_PTHREAD)
+#include "JobSystemPThread.hpp"
+#else
+#include <Jolt/Core/JobSystemThreadPool.h>
+#endif
 
 #include <cstdint>
 #include <cstring>
@@ -248,7 +253,11 @@ public:
 	_JoltInstance* wrapper;
 
 	TempAllocatorImpl temp_allocator;
+	#if defined(JOLT_USE_PTHREAD)
+	JobSystemPThread job_system;
+	#else
 	JobSystemThreadPool job_system;
+	#endif
 	BPLayerInterfaceImpl broad_phase_layer_interface;
 	ObjectVsBroadPhaseLayerFilterImpl object_vs_broadphase_layer_filter;
 	ObjectLayerPairFilterImpl object_vs_object_layer_filter;
